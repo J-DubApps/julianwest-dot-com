@@ -1,0 +1,7 @@
+# robots.txt — julianwest.com
+# Welcome, crawlers. Index everything.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://julianwest.com/sitemap.xml
