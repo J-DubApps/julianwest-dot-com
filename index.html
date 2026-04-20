@@ -1,8 +1,179 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="refresh" content="0;url=https://julianwest.me">
-<script>window.location.replace("https://julianwest.me");</script>
+  <meta charset="utf-8">
+  <title>Julian West</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #faf9f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    #__bundler_loading { position: fixed; bottom: 20px; right: 20px; font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; color: #666; background: #fff; padding: 8px 14px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); z-index: 10000; }
+    #__bundler_thumbnail { position: fixed; inset: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #faf9f5; z-index: 9999; }
+    #__bundler_thumbnail svg { width: 100%; height: 100%; object-fit: contain; }
+    #__bundler_placeholder { color: #999; font-size: 14px; }
+  </style>
+  <noscript>
+    <style>#__bundler_loading { display: none; }</style>
+    <div style="position:fixed;bottom:12px;left:12px;font:13px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;color:#999;background:rgba(255,255,255,0.9);padding:6px 12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.08);z-index:10000;">
+      This page requires JavaScript to display.
+    </div>
+  </noscript>
 </head>
-<body></body>
+<body>
+  <div id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <rect width="200" height="200" fill="#000"></rect>
+    <text x="100" y="118" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="80" letter-spacing="-4" fill="#fff">JW</text>
+  </svg>
+</div>
+  <div id="__bundler_loading">Unpacking...</div>
+
+  <script>
+    
+document.addEventListener('DOMContentLoaded', async function() {
+  const loading = document.getElementById('__bundler_loading');
+  function setStatus(msg) { if (loading) loading.textContent = msg; }
+
+  // Error sink persists across replaceWith since it's on window, not the DOM.
+  window.addEventListener('error', function(e) {
+    var p = document.body || document.documentElement;
+    var d = document.getElementById('__bundler_err') || p.appendChild(document.createElement('div'));
+    d.id = '__bundler_err';
+    d.style.cssText = 'position:fixed;bottom:12px;left:12px;right:12px;font:12px/1.4 ui-monospace,monospace;background:#2a1215;color:#ff8a80;padding:10px 14px;border-radius:8px;border:1px solid #5c2b2e;z-index:99999;white-space:pre-wrap;max-height:40vh;overflow:auto';
+    d.textContent = (d.textContent ? d.textContent + String.fromCharCode(10) : '') +
+      '[bundle] ' + (e.message || e.type) +
+      (e.filename ? ' (' + e.filename.slice(0, 60) + ':' + e.lineno + ')' : '');
+  }, true);
+
+  try {
+    const manifestEl = document.querySelector('script[type="__bundler/manifest"]');
+    const templateEl = document.querySelector('script[type="__bundler/template"]');
+    if (!manifestEl || !templateEl) {
+      setStatus('Error: missing bundle data');
+      console.error('[bundler] Missing script tags — manifestEl:', !!manifestEl, 'templateEl:', !!templateEl);
+      return;
+    }
+
+    const manifest = JSON.parse(manifestEl.textContent);
+    let template = JSON.parse(templateEl.textContent);
+
+    const uuids = Object.keys(manifest);
+    setStatus('Unpacking ' + uuids.length + ' assets...');
+
+    const blobUrls = {};
+    await Promise.all(uuids.map(async (uuid) => {
+      const entry = manifest[uuid];
+      try {
+        const binaryStr = atob(entry.data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+        let finalBytes = bytes;
+        if (entry.compressed) {
+          if (typeof DecompressionStream !== 'undefined') {
+            const ds = new DecompressionStream('gzip');
+            const writer = ds.writable.getWriter();
+            const reader = ds.readable.getReader();
+            writer.write(bytes);
+            writer.close();
+            const chunks = [];
+            let totalLen = 0;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+              totalLen += value.length;
+            }
+            finalBytes = new Uint8Array(totalLen);
+            let offset = 0;
+            for (const chunk of chunks) { finalBytes.set(chunk, offset); offset += chunk.length; }
+          } else {
+            console.warn('DecompressionStream not available, asset ' + uuid + ' may not render');
+          }
+        }
+
+        blobUrls[uuid] = URL.createObjectURL(new Blob([finalBytes], { type: entry.mime }));
+      } catch (err) {
+        console.error('Failed to decode asset ' + uuid + ':', err);
+        blobUrls[uuid] = URL.createObjectURL(new Blob([], { type: entry.mime }));
+      }
+    }));
+
+    const extResEl = document.querySelector('script[type="__bundler/ext_resources"]');
+    const extResources = extResEl ? JSON.parse(extResEl.textContent) : [];
+    const resourceMap = {};
+    for (const entry of extResources) {
+      if (blobUrls[entry.uuid]) resourceMap[entry.id] = blobUrls[entry.uuid];
+    }
+
+    setStatus('Rendering...');
+    for (const uuid of uuids) template = template.split(uuid).join(blobUrls[uuid]);
+
+    // Strip integrity + crossorigin — blob URLs from a file:// document inherit
+    // a null origin, so crossorigin forces a CORS fetch that SRI then rejects.
+    // The manifest bytes are ours; SRI protects against CDN compromise, not this.
+    template = template.replace(/\s+integrity="[^"]*"/gi, '').replace(/\s+crossorigin="[^"]*"/gi, '');
+
+    const resourceScript = '<script>window.__resources = ' +
+      JSON.stringify(resourceMap).split('</' + 'script>').join('<\\/' + 'script>') +
+      ';</' + 'script>';
+    // Inject after <head> so the DOCTYPE stays first; prepending the script
+    // would push the parser into quirks mode. DOMParser always emits a <head>
+    // (synthesizing one if the source HTML omitted it) but may carry
+    // attributes through, so match the full opening tag. slice() rather than
+    // replace() keeps us clear of $-pattern substitution in resourceScript.
+    const headOpen = template.match(/<head[^>]*>/i);
+    if (headOpen) {
+      const i = headOpen.index + headOpen[0].length;
+      template = template.slice(0, i) + resourceScript + template.slice(i);
+    }
+
+    // Parse the template and swap the root element. Scripts inserted via
+    // DOMParser/replaceWith are inert per spec — re-create each with
+    // createElement so they execute, awaiting onload for src scripts to
+    // preserve ordering (React before ReactDOM before Babel before text/babel).
+    const doc = new DOMParser().parseFromString(template, 'text/html');
+    document.documentElement.replaceWith(doc.documentElement);
+    const dead = Array.from(document.scripts);
+    for (const old of dead) {
+      const s = document.createElement('script');
+      for (const a of old.attributes) s.setAttribute(a.name, a.value);
+      s.textContent = old.textContent;
+      // text/babel scripts with a src: fetch and inline. transformScriptTags
+      // does XHR against the src, but blob:null/ from a file:// origin is
+      // silently dropped. Inlining makes it a plain inline babel script,
+      // which transformScriptTags handles unconditionally.
+      if ((s.type === 'text/babel' || s.type === 'text/jsx') && s.src) {
+        const r = await fetch(s.src);
+        s.textContent = await r.text();
+        s.removeAttribute('src');
+      }
+      const p = s.src ? new Promise(function(r) { s.onload = s.onerror = r; }) : null;
+      old.replaceWith(s);
+      if (p) await p;
+    }
+    // Babel standalone auto-transforms type=text/babel on DOMContentLoaded,
+    // which fired before we swapped the document. Trigger manually if present.
+    if (window.Babel && typeof window.Babel.transformScriptTags === 'function') {
+      window.Babel.transformScriptTags();
+    }
+  } catch (err) {
+    setStatus('Error unpacking: ' + err.message);
+    console.error('Bundle unpack error:', err);
+  }
+});
+
+  </script>
+
+  <script type="__bundler/manifest">
+{}
+  </script>
+
+  <script type="__bundler/ext_resources">
+[]
+  </script>
+
+  <script type="__bundler/template">
+"<!DOCTYPE html>\n<html lang=\"en\"><head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Julian West<\u002Ftitle>\n\n<meta name=\"description\" content=\"Julian West — Systems Architect / PM in Dallas\">\n<style>\n  /* ---------- Tweakable defaults (persisted by host) ---------- */\n  :root {\n    /* Palette — pure neutral */\n    --bg: #ffffff;\n    --fg: #000000;\n    --rule: rgba(0,0,0,0.18);\n    --muted: rgba(0,0,0,0.55);\n    --hover: rgba(0,0,0,0.04);\n  }\n  :root[data-theme=\"dark\"] {\n    --bg: #000000;\n    --fg: #ffffff;\n    --rule: rgba(255,255,255,0.22);\n    --muted: rgba(255,255,255,0.6);\n    --hover: rgba(255,255,255,0.06);\n  }\n\n  * { box-sizing: border-box; }\n  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); }\n  html { scroll-behavior: smooth; }\n  body {\n    font-family: \"Helvetica Neue\", \"Neue Haas Grotesk Text Pro\", Helvetica, Arial, sans-serif;\n    font-weight: 400;\n    -webkit-font-smoothing: antialiased;\n    -moz-osx-font-smoothing: grayscale;\n    letter-spacing: -0.01em;\n    transition: background-color 220ms ease, color 220ms ease;\n  }\n  a { color: inherit; text-decoration: none; }\n\n  /* ---------- Top chrome ---------- */\n  .chrome {\n    position: fixed; top: 0; left: 0; right: 0;\n    padding: 22px 28px;\n    display: grid;\n    grid-template-columns: 1fr auto 1fr;\n    align-items: center;\n    font-size: 11px;\n    text-transform: uppercase;\n    letter-spacing: 0.14em;\n    z-index: 50;\n    pointer-events: none;\n  }\n  .chrome > * { pointer-events: auto; }\n  .chrome .left  { justify-self: start;  opacity: 0; animation: fadeIn 900ms ease 2400ms forwards; }\n  .chrome .mid   { justify-self: center; opacity: 0; animation: fadeIn 900ms ease 2400ms forwards; }\n  .chrome .right { justify-self: end;    opacity: 0; animation: fadeIn 900ms ease 2400ms forwards; }\n\n  .mono { font-family: \"JetBrains Mono\", \"IBM Plex Mono\", ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.02em; }\n\n  /* Theme toggle */\n  .toggle {\n    appearance: none;\n    background: transparent;\n    color: inherit;\n    border: 1px solid var(--rule);\n    padding: 6px 10px;\n    font: inherit;\n    font-size: 10px;\n    text-transform: uppercase;\n    letter-spacing: 0.16em;\n    cursor: pointer;\n    display: inline-flex; align-items: center; gap: 8px;\n    transition: background-color 160ms ease, border-color 160ms ease;\n  }\n  .toggle:hover { background: var(--hover); }\n  .toggle .dot {\n    width: 8px; height: 8px; border-radius: 50%;\n    background: var(--fg);\n    transition: transform 220ms ease;\n  }\n  :root[data-theme=\"dark\"] .toggle .dot { transform: translateX(0); background: var(--fg); }\n\n  /* ---------- Hero ---------- */\n  .hero {\n    position: relative;\n    height: 100vh;\n    min-height: 560px;\n    display: grid;\n    place-items: center;\n    overflow: hidden;\n  }\n\n  /* Corner ticks — Swiss grid registration marks */\n  .tick {\n    position: absolute;\n    width: 18px; height: 18px;\n    opacity: 0; animation: fadeIn 900ms ease 2400ms forwards;\n  }\n  .tick::before, .tick::after {\n    content: \"\"; position: absolute; background: var(--fg);\n  }\n  .tick::before { width: 1px; height: 18px; left: 0; top: 0; }\n  .tick::after  { height: 1px; width: 18px; left: 0; top: 0; }\n  .tick.tl { top: 28px; left: 28px; }\n  .tick.tr { top: 28px; right: 28px; transform: scaleX(-1); }\n  .tick.bl { bottom: 28px; left: 28px; transform: scaleY(-1); }\n  .tick.br { bottom: 28px; right: 28px; transform: scale(-1,-1); }\n\n  /* Monogram */\n  .monogram {\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    font-family: \"Helvetica Neue\", \"Neue Haas Grotesk Display Pro\", Helvetica, Arial, sans-serif;\n    font-weight: 700;\n    line-height: 0.82;\n    letter-spacing: -0.06em;\n    font-size: clamp(180px, 38vw, 520px);\n    user-select: none;\n  }\n  .monogram .letter {\n    display: inline-block;\n    will-change: transform, opacity;\n  }\n  .monogram .j {\n    animation: slideJ 1400ms cubic-bezier(0.2, 0.7, 0.1, 1) 200ms both;\n  }\n  .monogram .w {\n    animation: slideW 1400ms cubic-bezier(0.2, 0.7, 0.1, 1) 200ms both;\n  }\n\n  @keyframes slideJ {\n    0%   { transform: translateX(-110vw); opacity: 0; }\n    60%  { opacity: 1; }\n    100% { transform: translateX(0); opacity: 1; }\n  }\n  @keyframes slideW {\n    0%   { transform: translateX(110vw); opacity: 0; }\n    60%  { opacity: 1; }\n    100% { transform: translateX(0); opacity: 1; }\n  }\n\n  /* Nameplate below monogram */\n  .nameplate {\n    position: absolute;\n    left: 0; right: 0;\n    bottom: 14vh;\n    display: grid;\n    grid-template-columns: 1fr auto 1fr;\n    align-items: baseline;\n    padding: 0 28px;\n    gap: 24px;\n    opacity: 0;\n    animation: fadeUp 900ms ease 1900ms forwards;\n  }\n  .nameplate .rule { height: 1px; background: var(--fg); align-self: center; }\n  .nameplate .name {\n    font-size: 13px;\n    letter-spacing: 0.28em;\n    text-transform: uppercase;\n    white-space: nowrap;\n  }\n\n  /* Scroll cue */\n  .scrollcue {\n    position: absolute;\n    left: 50%; bottom: 28px;\n    transform: translateX(-50%);\n    font-size: 10px;\n    letter-spacing: 0.24em;\n    text-transform: uppercase;\n    text-align: center;\n    opacity: 0;\n    animation: fadeUp 900ms ease 2600ms forwards;\n  }\n  .scrollcue .arrow {\n    display: block;\n    margin: 10px auto 0;\n    width: 1px;\n    height: 28px;\n    background: var(--fg);\n    animation: nudge 2200ms ease-in-out 3400ms infinite;\n    transform-origin: top;\n  }\n\n  @keyframes fadeIn { to { opacity: 1; } }\n  @keyframes fadeUp {\n    from { opacity: 0; transform: translateY(12px); }\n    to   { opacity: 1; transform: translateY(0); }\n  }\n  @keyframes nudge {\n    0%, 100% { transform: scaleY(0.2); opacity: 0.3; }\n    50%      { transform: scaleY(1);   opacity: 1;   }\n  }\n\n  /* ---------- Index (menu) ---------- */\n  .index {\n    padding: 140px 28px 120px;\n    max-width: 1280px;\n    margin: 0 auto;\n  }\n  .index-header {\n    display: grid;\n    grid-template-columns: 1fr auto;\n    align-items: end;\n    padding-bottom: 28px;\n    border-bottom: 1px solid var(--fg);\n    margin-bottom: 8px;\n  }\n  .index-header h2 {\n    margin: 0;\n    font-size: clamp(36px, 5vw, 64px);\n    font-weight: 700;\n    letter-spacing: -0.03em;\n    line-height: 0.95;\n  }\n  .index-header .meta {\n    font-size: 11px;\n    text-transform: uppercase;\n    letter-spacing: 0.18em;\n    color: var(--muted);\n    text-align: right;\n  }\n\n  .reveal { opacity: 0; transform: translateY(28px); transition: opacity 700ms ease, transform 700ms cubic-bezier(0.2,0.7,0.1,1); }\n  .reveal.in { opacity: 1; transform: translateY(0); }\n\n  .row {\n    display: grid;\n    grid-template-columns: 72px 1fr auto 36px;\n    align-items: center;\n    gap: 24px;\n    padding: 26px 8px;\n    border-bottom: 1px solid var(--rule);\n    position: relative;\n    cursor: pointer;\n    transition: padding 260ms ease;\n  }\n  .row::before {\n    content: \"\";\n    position: absolute;\n    inset: 0;\n    background: var(--fg);\n    transform: scaleY(0);\n    transform-origin: bottom;\n    transition: transform 320ms cubic-bezier(0.2,0.7,0.1,1);\n    z-index: 0;\n    pointer-events: none;\n  }\n  .row:hover::before { transform: scaleY(1); transform-origin: top; }\n  .row:hover { color: var(--bg); padding-left: 24px; }\n  .row > * { position: relative; z-index: 1; }\n\n  .row .num {\n    font-size: 11px;\n    letter-spacing: 0.16em;\n    color: var(--muted);\n    font-variant-numeric: tabular-nums;\n    transition: color 260ms ease;\n  }\n  .row:hover .num { color: var(--bg); opacity: 0.7; }\n\n  .row .label {\n    font-size: clamp(28px, 4.2vw, 56px);\n    font-weight: 500;\n    letter-spacing: -0.025em;\n    line-height: 1;\n  }\n  .row .kind {\n    font-size: 11px;\n    text-transform: uppercase;\n    letter-spacing: 0.18em;\n    color: var(--muted);\n    transition: color 260ms ease;\n  }\n  .row:hover .kind { color: var(--bg); opacity: 0.7; }\n\n  .row .arrow {\n    width: 18px; height: 18px;\n    position: relative;\n    transition: transform 260ms ease;\n  }\n  .row .arrow::after {\n    content: \"\";\n    position: absolute;\n    inset: 0;\n    background:\n      linear-gradient(currentColor, currentColor) top left / 100% 1px no-repeat,\n      linear-gradient(currentColor, currentColor) top right / 1px 100% no-repeat;\n    transform: rotate(45deg);\n  }\n  .row:hover .arrow { transform: translate(4px, -4px); }\n\n  /* ---------- Footer ---------- */\n  .foot {\n    max-width: 1280px;\n    margin: 0 auto;\n    padding: 48px 28px 40px;\n    display: grid;\n    grid-template-columns: 1fr 1fr 1fr;\n    gap: 24px;\n    font-size: 11px;\n    text-transform: uppercase;\n    letter-spacing: 0.18em;\n    color: var(--muted);\n    border-top: 1px solid var(--rule);\n  }\n  .foot .right { text-align: right; }\n  .foot .mid { text-align: center; }\n\n  /* ---------- Tweaks panel ---------- */\n  .tweaks {\n    position: fixed;\n    right: 20px; bottom: 20px;\n    width: 280px;\n    background: var(--bg);\n    color: var(--fg);\n    border: 1px solid var(--fg);\n    padding: 14px 16px 16px;\n    z-index: 100;\n    font-size: 11px;\n    text-transform: uppercase;\n    letter-spacing: 0.14em;\n    display: none;\n    box-shadow: 0 20px 60px -20px rgba(0,0,0,0.35);\n  }\n  .tweaks.open { display: block; }\n  .tweaks h3 {\n    margin: 0 0 12px;\n    font-size: 11px;\n    letter-spacing: 0.22em;\n    display: flex; justify-content: space-between; align-items: center;\n    padding-bottom: 8px;\n    border-bottom: 1px solid var(--rule);\n  }\n  .tweaks .row-t {\n    display: grid;\n    grid-template-columns: 1fr auto;\n    gap: 10px;\n    align-items: center;\n    padding: 8px 0;\n  }\n  .tweaks input[type=\"range\"] {\n    width: 100%;\n    accent-color: var(--fg);\n  }\n  .tweaks .seg {\n    display: inline-flex;\n    border: 1px solid var(--rule);\n  }\n  .tweaks .seg button {\n    appearance: none;\n    background: transparent; color: inherit;\n    border: 0;\n    font: inherit; font-size: 10px; letter-spacing: 0.14em;\n    padding: 5px 8px;\n    cursor: pointer;\n  }\n  .tweaks .seg button.on { background: var(--fg); color: var(--bg); }\n  .tweaks .val { font-variant-numeric: tabular-nums; opacity: 0.7; }\n\n  /* reduced motion */\n  @media (prefers-reduced-motion: reduce) {\n    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }\n  }\n\n  /* mobile */\n  @media (max-width: 640px) {\n    .row { grid-template-columns: 44px 1fr 28px; gap: 14px; padding: 20px 6px; }\n    .row .kind { display: none; }\n    .nameplate { grid-template-columns: 1fr; text-align: center; }\n    .nameplate .rule { display: none; }\n    .chrome { padding: 16px; }\n    .tick.tl, .tick.tr { top: 16px; } .tick.tl, .tick.bl { left: 16px; }\n    .tick.tr, .tick.br { right: 16px; } .tick.bl, .tick.br { bottom: 16px; }\n  }\n<\u002Fstyle>\n<\u002Fhead>\n<body>\n\n<!-- Top chrome -->\n<div class=\"chrome\">\n  <div class=\"left mono\">JW · EST. DALLAS<\u002Fdiv>\n  <div class=\"mid mono\">JULIANWEST.COM<\u002Fdiv>\n  <div class=\"right\">\n    <button class=\"toggle\" id=\"themeToggle\" aria-label=\"Toggle theme\">\n      <span class=\"dot\"><\u002Fspan>\n      <span id=\"themeLabel\">Light<\u002Fspan>\n    <\u002Fbutton>\n  <\u002Fdiv>\n<\u002Fdiv>\n\n<!-- Hero -->\n<section class=\"hero\" data-screen-label=\"01 Hero\" aria-label=\"Intro\">\n  <span class=\"tick tl\"><\u002Fspan>\n  <span class=\"tick tr\"><\u002Fspan>\n  <span class=\"tick bl\"><\u002Fspan>\n  <span class=\"tick br\"><\u002Fspan>\n\n  <div class=\"monogram\" aria-hidden=\"true\">\n    <span class=\"letter j\">J<\u002Fspan><span class=\"letter w\">W<\u002Fspan>\n  <\u002Fdiv>\n\n  <div class=\"nameplate\">\n    <div class=\"rule\"><\u002Fdiv>\n    <div class=\"name\">Julian West &nbsp;—&nbsp; Systems Architect / PM &nbsp;·&nbsp; Dallas<\u002Fdiv>\n    <div class=\"rule\"><\u002Fdiv>\n  <\u002Fdiv>\n\n  <div class=\"scrollcue\">\n    Scroll\n    <span class=\"arrow\"><\u002Fspan>\n  <\u002Fdiv>\n<\u002Fsection>\n\n<!-- Index -->\n<section class=\"index\" data-screen-label=\"02 Index\" aria-label=\"Index\">\n  <div class=\"index-header reveal\">\n    <h2>Index<\u002Fh2>\n    <div class=\"meta\">Five entries<br>Updated 2026<\u002Fdiv>\n  <\u002Fdiv>\n\n  <a class=\"row reveal\" href=\"https://blog.julianwest.me\" target=\"_blank\" rel=\"noopener\">\n    <span class=\"num mono\">01 —<\u002Fspan>\n    <span class=\"label\">Blog<\u002Fspan>\n    <span class=\"kind\">blog.julianwest.me<\u002Fspan>\n    <span class=\"arrow\"><\u002Fspan>\n  <\u002Fa>\n\n  <a class=\"row reveal\" href=\"https://julianwest.me/Resume/\" target=\"_blank\" rel=\"noopener\">\n    <span class=\"num mono\">02 —<\u002Fspan>\n    <span class=\"label\">Resume<\u002Fspan>\n    <span class=\"kind\">julianwest.me / résumé<\u002Fspan>\n    <span class=\"arrow\"><\u002Fspan>\n  <\u002Fa>\n\n  <a class=\"row reveal\" href=\"https://www.linkedin.com/in/julianwest/\" target=\"_blank\" rel=\"noopener\">\n    <span class=\"num mono\">03 —<\u002Fspan>\n    <span class=\"label\">LinkedIn<\u002Fspan>\n    <span class=\"kind\">linkedin.com / in / julianwest<\u002Fspan>\n    <span class=\"arrow\"><\u002Fspan>\n  <\u002Fa>\n\n  <a class=\"row reveal\" href=\"https://github.com/J-DubApps\" target=\"_blank\" rel=\"noopener\">\n    <span class=\"num mono\">04 —<\u002Fspan>\n    <span class=\"label\">GitHub<\u002Fspan>\n    <span class=\"kind\">github.com / J-DubApps<\u002Fspan>\n    <span class=\"arrow\"><\u002Fspan>\n  <\u002Fa>\n\n  <a class=\"row reveal\" href=\"https://bsky.app/profile/julianwest.me\" target=\"_blank\" rel=\"noopener\">\n    <span class=\"num mono\">05 —<\u002Fspan>\n    <span class=\"label\">Bluesky<\u002Fspan>\n    <span class=\"kind\">bsky.app / julianwest.me<\u002Fspan>\n    <span class=\"arrow\"><\u002Fspan>\n  <\u002Fa>\n\n  <a class=\"row reveal\" href=\"https://www.instagram.com/mrjdub/\" target=\"_blank\" rel=\"noopener\">\n    <span class=\"num mono\">06 —<\u002Fspan>\n    <span class=\"label\">Instagram<\u002Fspan>\n    <span class=\"kind\">instagram.com / mrjdub<\u002Fspan>\n    <span class=\"arrow\"><\u002Fspan>\n  <\u002Fa>\n\n  <a class=\"row reveal\" href=\"mailto:the@julianwest.com\">\n    <span class=\"num mono\">07 —<\u002Fspan>\n    <span class=\"label\">Email<\u002Fspan>\n    <span class=\"kind\">the@julianwest.com<\u002Fspan>\n    <span class=\"arrow\"><\u002Fspan>\n  <\u002Fa>\n<\u002Fsection>\n\n<footer class=\"foot\">\n  <div class=\"left mono\">© 2026 Julian West<\u002Fdiv>\n  <div class=\"mid mono\">Built with care · Dallas, TX<\u002Fdiv>\n  <div class=\"right mono\">v1.0<\u002Fdiv>\n<\u002Ffooter>\n\n<!-- Tweaks -->\n<aside class=\"tweaks\" id=\"tweaks\" aria-hidden=\"true\">\n  <h3>Tweaks <span class=\"mono\" style=\"opacity:.5\">JW<\u002Fspan><\u002Fh3>\n\n  <div class=\"row-t\">\n    <label for=\"tw-mono\">Monogram size<\u002Flabel>\n    <span class=\"val\" id=\"tw-mono-val\">38<\u002Fspan>\n  <\u002Fdiv>\n  <input id=\"tw-mono\" type=\"range\" min=\"22\" max=\"60\" step=\"1\">\n\n  <div class=\"row-t\">\n    <label for=\"tw-motion\">Motion intensity<\u002Flabel>\n    <span class=\"val\" id=\"tw-motion-val\">5<\u002Fspan>\n  <\u002Fdiv>\n  <input id=\"tw-motion\" type=\"range\" min=\"0\" max=\"10\" step=\"1\">\n\n  <div class=\"row-t\">\n    <label>Theme default<\u002Flabel>\n    <span class=\"seg\" role=\"tablist\">\n      <button data-theme-pref=\"system\">Auto<\u002Fbutton>\n      <button data-theme-pref=\"light\">Light<\u002Fbutton>\n      <button data-theme-pref=\"dark\">Dark<\u002Fbutton>\n    <\u002Fspan>\n  <\u002Fdiv>\n\n  <div class=\"row-t\">\n    <label>Marks<\u002Flabel>\n    <span class=\"seg\" role=\"tablist\">\n      <button data-ticks=\"on\">On<\u002Fbutton>\n      <button data-ticks=\"off\">Off<\u002Fbutton>\n    <\u002Fspan>\n  <\u002Fdiv>\n<\u002Faside>\n\n<script>\n  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{\n    \"monogramVw\": 22,\n    \"motion\": 4,\n    \"themeDefault\": \"system\",\n    \"ticks\": \"on\"\n  }/*EDITMODE-END*/;\n\n  // ---------- Theme ----------\n  const mq = window.matchMedia('(prefers-color-scheme: dark)');\n  function resolveTheme(pref) {\n    if (pref === 'system') return mq.matches ? 'dark' : 'light';\n    return pref;\n  }\n  function applyTheme(pref) {\n    const theme = resolveTheme(pref);\n    document.documentElement.setAttribute('data-theme', theme);\n    const label = document.getElementById('themeLabel');\n    if (label) label.textContent = theme === 'dark' ? 'Dark' : 'Light';\n  }\n\n  let themePref = localStorage.getItem('jw-theme-pref') || TWEAK_DEFAULTS.themeDefault || 'system';\n  applyTheme(themePref);\n  mq.addEventListener('change', () => { if (themePref === 'system') applyTheme('system'); });\n\n  document.getElementById('themeToggle').addEventListener('click', () => {\n    const cur = document.documentElement.getAttribute('data-theme');\n    themePref = cur === 'dark' ? 'light' : 'dark';\n    localStorage.setItem('jw-theme-pref', themePref);\n    applyTheme(themePref);\n    syncTweakButtons();\n  });\n\n  // ---------- Scroll reveal ----------\n  const io = new IntersectionObserver((entries) => {\n    entries.forEach((e, i) => {\n      if (e.isIntersecting) {\n        const els = document.querySelectorAll('.reveal:not(.in)');\n        const idx = Array.from(els).indexOf(e.target);\n        e.target.style.transitionDelay = (Math.max(0, idx) * 60) + 'ms';\n        e.target.classList.add('in');\n        io.unobserve(e.target);\n      }\n    });\n  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });\n  document.querySelectorAll('.reveal').forEach(el => io.observe(el));\n\n  // ---------- Tweaks ----------\n  const state = { ...TWEAK_DEFAULTS };\n  const tweaks = document.getElementById('tweaks');\n\n  function applyMonogram(v) {\n    document.documentElement.style.setProperty('--mono-vw', v + 'vw');\n    const el = document.querySelector('.monogram');\n    if (el) el.style.fontSize = `clamp(140px, ${v}vw, 620px)`;\n    const m = document.getElementById('tw-mono-val'); if (m) m.textContent = v;\n  }\n  function applyMotion(v) {\n    const root = document.documentElement;\n    const scale = v / 5; // 1 is default\n    root.style.setProperty('--motion-scale', scale.toString());\n    document.body.style.setProperty('animation-duration', '');\n    // Override keyframe durations via CSS vars\n    document.querySelectorAll('.monogram .j, .monogram .w').forEach(el => {\n      el.style.animationDuration = (1400 / Math.max(0.4, scale)) + 'ms';\n      if (v === 0) { el.style.animation = 'none'; el.style.transform = 'translateX(0)'; el.style.opacity = 1; }\n    });\n    const m = document.getElementById('tw-motion-val'); if (m) m.textContent = v;\n  }\n  function applyTicks(v) {\n    document.querySelectorAll('.tick').forEach(t => t.style.display = v === 'off' ? 'none' : '');\n  }\n\n  function syncTweakButtons() {\n    document.querySelectorAll('[data-theme-pref]').forEach(b => b.classList.toggle('on', b.dataset.themePref === state.themeDefault));\n    document.querySelectorAll('[data-ticks]').forEach(b => b.classList.toggle('on', b.dataset.ticks === state.ticks));\n  }\n\n  function applyAll() {\n    applyMonogram(state.monogramVw);\n    applyMotion(state.motion);\n    applyTicks(state.ticks);\n    document.getElementById('tw-mono').value = state.monogramVw;\n    document.getElementById('tw-motion').value = state.motion;\n    syncTweakButtons();\n  }\n  applyAll();\n\n  function persist(partial) {\n    Object.assign(state, partial);\n    try {\n      window.parent.postMessage({ type: '__edit_mode_set_keys', edits: partial }, '*');\n    } catch(_) {}\n  }\n\n  document.getElementById('tw-mono').addEventListener('input', (e) => {\n    const v = +e.target.value;\n    applyMonogram(v);\n    persist({ monogramVw: v });\n  });\n  document.getElementById('tw-motion').addEventListener('input', (e) => {\n    const v = +e.target.value;\n    applyMotion(v);\n    persist({ motion: v });\n  });\n  document.querySelectorAll('[data-theme-pref]').forEach(b => {\n    b.addEventListener('click', () => {\n      const pref = b.dataset.themePref;\n      themePref = pref;\n      localStorage.setItem('jw-theme-pref', pref);\n      applyTheme(pref);\n      persist({ themeDefault: pref });\n    });\n  });\n  document.querySelectorAll('[data-ticks]').forEach(b => {\n    b.addEventListener('click', () => {\n      applyTicks(b.dataset.ticks);\n      persist({ ticks: b.dataset.ticks });\n    });\n  });\n\n  // ---------- Edit mode host integration ----------\n  window.addEventListener('message', (ev) => {\n    const d = ev.data || {};\n    if (d.type === '__activate_edit_mode') {\n      tweaks.classList.add('open');\n      tweaks.setAttribute('aria-hidden', 'false');\n    } else if (d.type === '__deactivate_edit_mode') {\n      tweaks.classList.remove('open');\n      tweaks.setAttribute('aria-hidden', 'true');\n    }\n  });\n  try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch(_) {}\n\n  // ---------- Idle auto-scroll + auto-redirect ----------\n  // 7s after load with no interaction → smooth-scroll to the index.\n  // 30s after load with no interaction → redirect to blog.\n  (function() {\n    const SCROLL_AT_MS   = 7000;\n    const REDIRECT_AT_MS = 30000;\n    const REDIRECT_URL   = 'https://blog.julianwest.me';\n\n    let scrollTimer   = null;\n    let redirectTimer = null;\n    let cancelled     = false;\n\n    function cancel() {\n      if (cancelled) return;\n      cancelled = true;\n      clearTimeout(scrollTimer);\n      clearTimeout(redirectTimer);\n      events.forEach(ev => window.removeEventListener(ev, onInteract, true));\n    }\n\n    function onInteract() { cancel(); }\n\n    // Any of these cancel the idle sequence\n    const events = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'mousemove', 'scroll'];\n    // Delay attaching 'scroll' listener slightly — our own programmatic scroll\n    // would otherwise trip it. We handle that below by detaching before scrolling.\n    events.forEach(ev => window.addEventListener(ev, onInteract, { capture: true, passive: true }));\n\n    scrollTimer = setTimeout(() => {\n      if (cancelled) return;\n      // Temporarily detach so our own scroll doesn't self-cancel\n      window.removeEventListener('scroll', onInteract, true);\n      const target = document.querySelector('.index');\n      if (target) {\n        const y = target.getBoundingClientRect().top + window.scrollY;\n        window.scrollTo({ top: y, behavior: 'smooth' });\n      }\n      // Re-attach after scroll settles; any further scroll by user cancels.\n      setTimeout(() => {\n        if (!cancelled) window.addEventListener('scroll', onInteract, { capture: true, passive: true });\n      }, 1600);\n    }, SCROLL_AT_MS);\n\n    redirectTimer = setTimeout(() => {\n      if (cancelled) return;\n      window.location.href = REDIRECT_URL;\n    }, REDIRECT_AT_MS);\n\n    // Pause idle timers when tab is hidden; reset on focus so a backgrounded\n    // tab doesn't suddenly auto-redirect when the user returns.\n    document.addEventListener('visibilitychange', () => {\n      if (document.hidden) cancel();\n    });\n  })();\n<\u002Fscript>\n\n\n<\u002Fbody><\u002Fhtml>"
+  </script>
+</body>
 </html>
