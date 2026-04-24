@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Perfect Martini — Workflow</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: #0f0f0f;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+          sans-serif;
+        color: #fff;
+        padding: 20px 0 40px;
+      }
+      header {
+        text-align: center;
+        padding: 28px 20px 18px;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      header h1 {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+      }
+      header p {
+        color: #777;
+        font-size: 13px;
+        margin-top: 7px;
+      }
+
+      #outer {
+        width: 860px;
+        margin: 14px auto;
+      }
+
+      #diagram-wrapper {
+        position: relative;
+        width: 860px;
+        background: #161616;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      #svg-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      #node-layer {
+        position: relative;
+        z-index: 2;
+      }
+
+      .node {
+        position: absolute;
+        border-radius: 10px;
+        border: 2px solid;
+        padding: 10px 10px;
+        height: 82px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        cursor: pointer;
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s,
+          opacity 0.2s;
+        user-select: none;
+        overflow: hidden;
+      }
+      .node:hover {
+        transform: scale(1.06);
+      }
+      .node.dim {
+        opacity: 0.15;
+      }
+      .node.lit {
+        box-shadow:
+          0 0 0 3px var(--glow),
+          0 0 22px var(--glow);
+      }
+
+      .node .ni {
+        font-size: 20px;
+        line-height: 1;
+        margin-bottom: 4px;
+      }
+      .node .nl {
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.3;
+        color: #fff;
+      }
+      .node .ns {
+        font-size: 10px;
+        color: #999;
+        margin-top: 3px;
+        line-height: 1.3;
+      }
+
+      .trigger {
+        background: #1a3455;
+        border-color: #3b82f6;
+        --glow: rgba(59, 130, 246, 0.5);
+      }
+      .processing {
+        background: #163328;
+        border-color: #10b981;
+        --glow: rgba(16, 185, 129, 0.5);
+      }
+      .tool {
+        background: #332813;
+        border-color: #f59e0b;
+        --glow: rgba(245, 158, 11, 0.5);
+      }
+      .output {
+        background: #331818;
+        border-color: #ef4444;
+        --glow: rgba(239, 68, 68, 0.5);
+      }
+      .decision {
+        background: #27153d;
+        border-color: #a855f7;
+        --glow: rgba(168, 85, 247, 0.5);
+      }
+
+      #tooltip {
+        position: fixed;
+        background: #1c1c1c;
+        border: 1px solid #2e2e2e;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 11.5px;
+        color: #bbb;
+        max-width: 220px;
+        line-height: 1.55;
+        pointer-events: none;
+        z-index: 9999;
+        display: none;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        justify-content: center;
+        padding: 14px 0;
+      }
+      .li {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 11.5px;
+        color: #666;
+      }
+      .ld {
+        width: 11px;
+        height: 11px;
+        border-radius: 2px;
+        border: 2px solid;
+        flex-shrink: 0;
+      }
+      .hint {
+        text-align: center;
+        font-size: 11px;
+        color: #444;
+        margin-top: 4px;
+      }
+
+      @media (max-width: 900px) {
+        #outer {
+          width: 100%;
+          overflow-x: auto;
+          padding: 0 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🍸 The Perfect Martini</h1>
+      <p>
+        Interactive workflow — hover for details &bull; click any step to trace
+        its connections
+      </p>
+    </header>
+
+    <div id="outer">
+      <div id="diagram-wrapper">
+        <svg id="svg-layer"></svg>
+        <div id="node-layer"></div>
+      </div>
+      <div class="legend">
+        <div class="li">
+          <div
+            class="ld"
+            style="border-color: #3b82f6; background: #1a3455"
+          ></div>
+          Trigger
+        </div>
+        <div class="li">
+          <div
+            class="ld"
+            style="border-color: #10b981; background: #163328"
+          ></div>
+          Processing
+        </div>
+        <div class="li">
+          <div
+            class="ld"
+            style="border-color: #f59e0b; background: #332813"
+          ></div>
+          Ingredient / Tool
+        </div>
+        <div class="li">
+          <div
+            class="ld"
+            style="border-color: #ef4444; background: #331818"
+          ></div>
+          Output
+        </div>
+        <div class="li">
+          <div
+            class="ld"
+            style="border-color: #a855f7; background: #27153d"
+          ></div>
+          Decision
+        </div>
+      </div>
+      <p class="hint">
+        Click a node to highlight its connections &bull; Click background to
+        reset
+      </p>
+    </div>
+
+    <div id="tooltip"></div>
+
+    <script>
+      (function () {
+        var W = 860;
+        var CX = W / 2; // 430
+        var NW = 162;
+        var NH = 82;
+        var ns = "http://www.w3.org/2000/svg";
+
+        var NODES = [
+          {
+            id: "start",
+            type: "trigger",
+            icon: "🍸",
+            label: "Begin Martini",
+            sub: "Gather gear: glass, jigger, strainer",
+            tip: "Start your setup. You need: a martini glass, a mixing glass or shaker, a jigger, a bar spoon, and a fine-mesh strainer.",
+          },
+          {
+            id: "chill",
+            type: "processing",
+            icon: "🧊",
+            label: "Chill the Glass",
+            sub: "Fill with ice water or freeze 5 min",
+            tip: "A cold glass is non-negotiable. Fill your martini glass with ice and cold water while you prepare. Discard before pouring.",
+          },
+          {
+            id: "gin",
+            type: "tool",
+            icon: "🫙",
+            label: "Measure Gin",
+            sub: "2 oz London Dry Gin (or vodka)",
+            tip: "London Dry is classic — Tanqueray, Beefeater, or Hendrick's. Measure exactly 2 oz (60 ml) with a jigger. Quality matters here.",
+          },
+          {
+            id: "vermouth",
+            type: "tool",
+            icon: "🍾",
+            label: "Add Vermouth",
+            sub: "½ oz dry French vermouth",
+            tip: "Noilly Prat or Dolin Dry. Classic ratio: 4:1 gin to vermouth. For extra-dry: swirl vermouth in the glass and discard it.",
+          },
+          {
+            id: "method",
+            type: "decision",
+            icon: "⋄",
+            label: "Method?",
+            sub: "Shaken or Stirred",
+            tip: "The eternal debate. Stirred = silky clarity, less dilution. Shaken = colder, slightly cloudier. Purists insist: stir it.",
+          },
+          {
+            id: "stir",
+            type: "processing",
+            icon: "🥄",
+            label: "Stir Method",
+            sub: "Stir 30–40 sec with large ice",
+            tip: "Place large ice cubes in a mixing glass. Add gin and vermouth. Stir gently in long circular motions for 30–40 seconds.",
+          },
+          {
+            id: "shake",
+            type: "processing",
+            icon: "🤝",
+            label: "Shake Method",
+            sub: "Shake vigorously 15 seconds",
+            tip: "Fill cocktail shaker with ice. Add gin and vermouth. Shake hard for 15 sec. Creates a colder, more diluted, frothy result.",
+          },
+          {
+            id: "strain",
+            type: "processing",
+            icon: "🌀",
+            label: "Strain & Pour",
+            sub: "Fine-strain into chilled glass",
+            tip: "Discard the ice water from your glass. Strain through a fine-mesh strainer to remove ice chips. Pour with precision and care.",
+          },
+          {
+            id: "garnish",
+            type: "decision",
+            icon: "⋄",
+            label: "Garnish?",
+            sub: "Olive or Lemon Twist",
+            tip: "The garnish reframes the drink. Olive adds savory brine depth. Lemon twist brings bright citrus aroma. Both are correct.",
+          },
+          {
+            id: "olive",
+            type: "processing",
+            icon: "🫒",
+            label: "Olive Garnish",
+            sub: "1–3 olives on a cocktail pick",
+            tip: "Use quality green pitted olives. For a Dirty Martini add ½ oz brine before mixing. Spear 1–3 olives on a cocktail pick.",
+          },
+          {
+            id: "lemon",
+            type: "processing",
+            icon: "🍋",
+            label: "Lemon Twist",
+            sub: "Express oil, twist, rim the glass",
+            tip: "Cut a wide strip of lemon peel. Hold over the glass, squeeze firmly to spray citrus oils onto the surface. Twist, rim, drop.",
+          },
+          {
+            id: "serve",
+            type: "output",
+            icon: "✨",
+            label: "Serve Immediately",
+            sub: "The perfect Martini — drink it cold",
+            tip: "A Martini waits for no one. Serve the moment it is poured. The optimal drinking window is brief. Raise the glass. Sip. Exhale.",
+          },
+        ];
+
+        var EDGES = [
+          { from: "start", to: "chill", label: "" },
+          { from: "chill", to: "gin", label: "" },
+          { from: "gin", to: "vermouth", label: "2 oz measured" },
+          { from: "vermouth", to: "method", label: "combined spirits" },
+          { from: "method", to: "stir", label: "stirred" },
+          { from: "method", to: "shake", label: "shaken" },
+          { from: "stir", to: "strain", label: "diluted & cold" },
+          { from: "shake", to: "strain", label: "diluted & cold" },
+          { from: "strain", to: "garnish", label: "strained" },
+          { from: "garnish", to: "olive", label: "olive" },
+          { from: "garnish", to: "lemon", label: "twist" },
+          { from: "olive", to: "serve", label: "garnished" },
+          { from: "lemon", to: "serve", label: "garnished" },
+        ];
+
+        var POS = {
+          start: { x: CX, y: 70 },
+          chill: { x: CX, y: 190 },
+          gin: { x: CX, y: 310 },
+          vermouth: { x: CX, y: 430 },
+          method: { x: CX, y: 560 },
+          stir: { x: CX - 195, y: 700 },
+          shake: { x: CX + 195, y: 700 },
+          strain: { x: CX, y: 840 },
+          garnish: { x: CX, y: 970 },
+          olive: { x: CX - 195, y: 1110 },
+          lemon: { x: CX + 195, y: 1110 },
+          serve: { x: CX, y: 1250 },
+        };
+
+        var CONTAINER_H = 1316;
+
+        var TYPE_COLOR = {
+          trigger: "#3B82F6",
+          processing: "#10B981",
+          tool: "#F59E0B",
+          output: "#EF4444",
+          decision: "#A855F7",
+        };
+
+        // ── DOM setup ──
+        var wrapper = document.getElementById("diagram-wrapper");
+        var svgEl = document.getElementById("svg-layer");
+        var nodeLayer = document.getElementById("node-layer");
+        var tipEl = document.getElementById("tooltip");
+
+        wrapper.style.height = CONTAINER_H + "px";
+        svgEl.setAttribute("width", W);
+        svgEl.setAttribute("height", CONTAINER_H);
+        svgEl.setAttribute("viewBox", "0 0 " + W + " " + CONTAINER_H);
+
+        // Arrow markers
+        var defs = document.createElementNS(ns, "defs");
+        function mkMarker(id, color) {
+          var m = document.createElementNS(ns, "marker");
+          m.setAttribute("id", id);
+          m.setAttribute("markerWidth", "9");
+          m.setAttribute("markerHeight", "7");
+          m.setAttribute("refX", "8");
+          m.setAttribute("refY", "3.5");
+          m.setAttribute("orient", "auto");
+          var p = document.createElementNS(ns, "polygon");
+          p.setAttribute("points", "0 0,9 3.5,0 7");
+          p.setAttribute("fill", color);
+          m.appendChild(p);
+          return m;
+        }
+        defs.appendChild(mkMarker("ar", "#555"));
+        defs.appendChild(mkMarker("ar-hi", "#aaa"));
+        svgEl.appendChild(defs);
+
+        // ── Helpers ──
+        function bnd(id) {
+          var p = POS[id];
+          return {
+            cx: p.x,
+            cy: p.y,
+            l: p.x - NW / 2,
+            r: p.x + NW / 2,
+            t: p.y - NH / 2,
+            b: p.y + NH / 2,
+          };
+        }
+
+        function curvePath(x1, y1, x2, y2) {
+          var midY = (y1 + y2) / 2;
+          if (Math.abs(x2 - x1) > 20) {
+            return (
+              "M " +
+              x1 +
+              " " +
+              y1 +
+              " C " +
+              x1 +
+              " " +
+              midY +
+              ", " +
+              x2 +
+              " " +
+              midY +
+              ", " +
+              x2 +
+              " " +
+              y2
+            );
+          }
+          return "M " + x1 + " " + y1 + " L " + x2 + " " + y2;
+        }
+
+        // ── Draw edges ──
+        EDGES.forEach(function (e) {
+          var f = bnd(e.from),
+            t = bnd(e.to);
+          var x1, y1, x2, y2;
+
+          if (e.from === "method" && e.to === "stir") {
+            x1 = f.l;
+            y1 = f.cy;
+            x2 = t.cx;
+            y2 = t.t;
+          } else if (e.from === "method" && e.to === "shake") {
+            x1 = f.r;
+            y1 = f.cy;
+            x2 = t.cx;
+            y2 = t.t;
+          } else if (e.from === "garnish" && e.to === "olive") {
+            x1 = f.l;
+            y1 = f.cy;
+            x2 = t.cx;
+            y2 = t.t;
+          } else if (e.from === "garnish" && e.to === "lemon") {
+            x1 = f.r;
+            y1 = f.cy;
+            x2 = t.cx;
+            y2 = t.t;
+          } else {
+            x1 = f.cx;
+            y1 = f.b;
+            x2 = t.cx;
+            y2 = t.t;
+          }
+
+          var path = document.createElementNS(ns, "path");
+          path.setAttribute("d", curvePath(x1, y1, x2, y2));
+          path.setAttribute("stroke", "#444");
+          path.setAttribute("stroke-width", "1.8");
+          path.setAttribute("fill", "none");
+          path.setAttribute("marker-end", "url(#ar)");
+          path.dataset.from = e.from;
+          path.dataset.to = e.to;
+          svgEl.appendChild(path);
+
+          if (e.label) {
+            var tx = document.createElementNS(ns, "text");
+            tx.setAttribute("x", String(Math.round((x1 + x2) / 2 + 3)));
+            tx.setAttribute("y", String(Math.round((y1 + y2) / 2 - 6)));
+            tx.setAttribute("font-size", "9.5");
+            tx.setAttribute("fill", "#555");
+            tx.setAttribute("font-family", "sans-serif");
+            tx.setAttribute("text-anchor", "middle");
+            tx.textContent = e.label;
+            tx.dataset.from = e.from;
+            tx.dataset.to = e.to;
+            svgEl.appendChild(tx);
+          }
+        });
+
+        // ── Create node divs ──
+        var nodeEls = {};
+
+        NODES.forEach(function (n) {
+          var p = POS[n.id];
+          var div = document.createElement("div");
+          div.className = "node " + n.type;
+          div.id = "n-" + n.id;
+          div.style.cssText =
+            "left:" +
+            (p.x - NW / 2) +
+            "px;top:" +
+            (p.y - NH / 2) +
+            "px;width:" +
+            NW +
+            "px;";
+          div.innerHTML =
+            '<div class="ni">' +
+            n.icon +
+            '</div><div class="nl">' +
+            n.label +
+            '</div><div class="ns">' +
+            n.sub +
+            "</div>";
+
+          div.addEventListener("mouseenter", function (ev) {
+            tipEl.style.display = "block";
+            tipEl.textContent = n.tip;
+            moveTip(ev);
+          });
+          div.addEventListener("mousemove", moveTip);
+          div.addEventListener("mouseleave", function () {
+            tipEl.style.display = "none";
+          });
+          div.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            highlight(n.id);
+          });
+
+          nodeLayer.appendChild(div);
+          nodeEls[n.id] = div;
+        });
+
+        function moveTip(ev) {
+          tipEl.style.left = ev.clientX + 14 + "px";
+          tipEl.style.top = ev.clientY + 14 + "px";
+        }
+
+        // ── Interactions ──
+        function connectedIds(id) {
+          var s = {};
+          s[id] = true;
+          EDGES.forEach(function (e) {
+            if (e.from === id) s[e.to] = true;
+            if (e.to === id) s[e.from] = true;
+          });
+          return s;
+        }
+
+        function highlight(id) {
+          var conn = connectedIds(id);
+          var color =
+            TYPE_COLOR[
+              NODES.filter(function (n) {
+                return n.id === id;
+              })[0].type
+            ];
+
+          NODES.forEach(function (n) {
+            var el = nodeEls[n.id];
+            if (conn[n.id]) {
+              el.classList.remove("dim");
+              el.classList.add("lit");
+            } else {
+              el.classList.add("dim");
+              el.classList.remove("lit");
+            }
+          });
+
+          svgEl.querySelectorAll("path[data-from]").forEach(function (p) {
+            var on = p.dataset.from === id || p.dataset.to === id;
+            p.setAttribute("stroke", on ? color : "#282828");
+            p.setAttribute("stroke-width", on ? "2.8" : "1.5");
+            p.setAttribute("marker-end", on ? "url(#ar-hi)" : "url(#ar)");
+          });
+          svgEl.querySelectorAll("text[data-from]").forEach(function (t) {
+            t.setAttribute(
+              "fill",
+              t.dataset.from === id || t.dataset.to === id ? "#999" : "#333",
+            );
+          });
+        }
+
+        function reset() {
+          NODES.forEach(function (n) {
+            nodeEls[n.id].classList.remove("dim", "lit");
+          });
+          svgEl.querySelectorAll("path[data-from]").forEach(function (p) {
+            p.setAttribute("stroke", "#444");
+            p.setAttribute("stroke-width", "1.8");
+            p.setAttribute("marker-end", "url(#ar)");
+          });
+          svgEl.querySelectorAll("text[data-from]").forEach(function (t) {
+            t.setAttribute("fill", "#555");
+          });
+        }
+
+        wrapper.addEventListener("click", reset);
+      })();
+    </script>
+  </body>
+</html>

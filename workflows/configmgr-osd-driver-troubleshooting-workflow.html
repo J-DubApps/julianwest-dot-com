@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigMgr OSD Driver Troubleshooting Workflow</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0f0f0f; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #ffffff; min-height: 100vh; padding: 32px; }
+.header { text-align: center; margin-bottom: 40px; }
+.header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, #3B82F6, #10B981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header p { color: #888888; font-size: 14px; max-width: 620px; margin: 0 auto; }
+.diagram-container { background: #161616; border-radius: 16px; padding: 40px 24px; max-width: 1200px; margin: 0 auto; position: relative; overflow-x: auto; }
+svg.connections { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+svg.connections line, svg.connections path { stroke-width: 2; }
+svg.connections marker path { fill: #555; }
+.flow { display: flex; flex-direction: column; align-items: center; gap: 0; position: relative; z-index: 2; }
+.row { display: flex; justify-content: center; align-items: flex-start; gap: 32px; margin-bottom: 12px; position: relative; }
+.connector-vertical { width: 2px; height: 28px; background: #444; margin: 0 auto; position: relative; }
+.connector-vertical::after { content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid #555; }
+.connector-vertical.blue { background: #3B82F6; }
+.connector-vertical.blue::after { border-top-color: #3B82F6; }
+.connector-vertical.green { background: #10B981; }
+.connector-vertical.green::after { border-top-color: #10B981; }
+.connector-vertical.purple { background: #A855F7; }
+.connector-vertical.purple::after { border-top-color: #A855F7; }
+.connector-vertical.amber { background: #F59E0B; }
+.connector-vertical.amber::after { border-top-color: #F59E0B; }
+.connector-vertical.red { background: #EF4444; }
+.connector-vertical.red::after { border-top-color: #EF4444; }
+.connector-vertical.indigo { background: #6366F1; }
+.connector-vertical.indigo::after { border-top-color: #6366F1; }
+.branch-container { display: flex; flex-direction: column; align-items: center; }
+.branch-row { display: flex; justify-content: center; gap: 80px; position: relative; }
+.branch-row::before { content: ''; position: absolute; top: 0; left: 25%; right: 25%; height: 2px; background: #A855F7; }
+.branch-label { font-size: 11px; font-weight: 600; color: #A855F7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; text-align: center; }
+.node { background: #1a1a2e; border: 2px solid #444; border-radius: 12px; padding: 18px 20px; min-width: 180px; max-width: 220px; text-align: center; cursor: pointer; transition: all 0.3s ease; position: relative; }
+.node:hover { transform: scale(1.05); }
+.node.trigger { background: #1e3a5f; border-color: #3B82F6; }
+.node.trigger:hover { box-shadow: 0 0 20px rgba(59,130,246,0.4); }
+.node.process { background: #1a3d2e; border-color: #10B981; }
+.node.process:hover { box-shadow: 0 0 20px rgba(16,185,129,0.4); }
+.node.tool { background: #3d2e1a; border-color: #F59E0B; }
+.node.tool:hover { box-shadow: 0 0 20px rgba(245,158,11,0.4); }
+.node.output { background: #3d1a1a; border-color: #EF4444; }
+.node.output:hover { box-shadow: 0 0 20px rgba(239,68,68,0.4); }
+.node.decision { background: #2e1a3d; border-color: #A855F7; }
+.node.decision:hover { box-shadow: 0 0 20px rgba(168,85,247,0.4); }
+.node.datastore { background: #1a1a2e; border-color: #6366F1; }
+.node.datastore:hover { box-shadow: 0 0 20px rgba(99,102,241,0.4); }
+.node .icon { font-size: 24px; margin-bottom: 6px; }
+.node .label { font-size: 13px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+.node .subtitle { font-size: 11px; color: #aaa; line-height: 1.4; }
+.node.active { z-index: 10; }
+.node.dimmed { opacity: 0.25; transform: scale(0.97); }
+.data-label { font-size: 10px; color: #666; text-align: center; margin: -4px 0 -4px 0; font-style: italic; }
+.split-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.split-horizontal { display: flex; justify-content: center; gap: 0; width: 100%; position: relative; }
+.split-horizontal .branch { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; min-width: 220px; }
+.split-line { position: relative; height: 32px; width: 100%; }
+.branch-labels { display: flex; justify-content: center; gap: 200px; margin-bottom: 2px; }
+.branch-labels span { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 8px; }
+.branch-labels .yes { color: #10B981; background: rgba(16,185,129,0.15); }
+.branch-labels .no { color: #EF4444; background: rgba(239,68,68,0.15); }
+.merge-label { font-size: 10px; color: #888; text-align: center; margin: 4px 0; font-style: italic; }
+.tooltip { display: none; position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); background: #222; border: 1px solid #444; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #ccc; width: 240px; text-align: left; z-index: 100; line-height: 1.5; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+.tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid #444; }
+.node:hover .tooltip { display: block; }
+.legend { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 36px; padding: 16px; background: #1a1a1a; border-radius: 10px; max-width: 1200px; margin-left: auto; margin-right: auto; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888; }
+.legend-dot { width: 12px; height: 12px; border-radius: 4px; border: 2px solid; }
+.legend-dot.trigger { border-color: #3B82F6; background: #1e3a5f; }
+.legend-dot.process { border-color: #10B981; background: #1a3d2e; }
+.legend-dot.tool { border-color: #F59E0B; background: #3d2e1a; }
+.legend-dot.output { border-color: #EF4444; background: #3d1a1a; }
+.legend-dot.datastore { border-color: #6366F1; background: #1a1a2e; }
+.legend-dot.decision { border-color: #A855F7; background: #2e1a3d; }
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>ConfigMgr OSD Driver Troubleshooting</h1>
+<p>Systematic workflow for diagnosing and resolving driver issues during Operating System Deployment with Microsoft Configuration Manager (MECM/SCCM).</p>
+</div>
+
+<div class="diagram-container" id="diagram">
+<div class="flow">
+
+<!-- TRIGGER -->
+<div class="row">
+<div class="node trigger" data-id="1">
+<div class="icon">&#9889;</div>
+<div class="label">OSD Fails on New Laptop</div>
+<div class="subtitle">Task sequence error during driver injection or post-deploy hardware issue</div>
+<div class="tooltip">A new hardware model fails during OSD — could be a TS error at Apply Driver Package, missing NIC/storage drivers, or post-deployment device manager errors.</div>
+</div>
+</div>
+
+<div class="connector-vertical blue"></div>
+<div class="data-label">smsts.log + model info</div>
+
+<!-- STEP 1: Gather Info -->
+<div class="row">
+<div class="node process" data-id="2">
+<div class="icon">&#128270;</div>
+<div class="label">Gather Model Identity</div>
+<div class="subtitle">WMI: Win32_ComputerSystem &rarr; Model, Manufacturer, BIOS version</div>
+<div class="tooltip"><b>Key WMI queries:</b><br>wmic csproduct get name, vendor<br>wmic bios get smbiosbiosversion<br>Also check: Win32_BaseBoard for OEM sub-models. Match against WQL in your Apply Driver Package step.</div>
+</div>
+</div>
+
+<div class="connector-vertical green"></div>
+<div class="data-label">Manufacturer + Model string</div>
+
+<!-- STEP 2: Check smsts.log -->
+<div class="row">
+<div class="node process" data-id="3">
+<div class="icon">&#128196;</div>
+<div class="label">Analyze smsts.log</div>
+<div class="subtitle">Search for driver-related failures in TS log</div>
+<div class="tooltip"><b>Key search terms:</b><br>- "Failed to find driver"<br>- "No driver package"<br>- "DISM returned error"<br>- "OSDApplyDrivers"<br>- WQL match failures<br>Log location: X:\Windows\Temp\SMSTSLog or C:\_SMSTaskSequence\Logs</div>
+</div>
+</div>
+
+<div class="connector-vertical green"></div>
+
+<!-- DECISION 1: Driver Package Exists? -->
+<div class="row">
+<div class="node decision" data-id="4">
+<div class="icon">&#10067;</div>
+<div class="label">Driver Package Exists in ConfigMgr?</div>
+<div class="subtitle">Check console &rarr; Software Library &rarr; Driver Packages</div>
+<div class="tooltip">In the ConfigMgr console, navigate to Software Library &rarr; Operating Systems &rarr; Driver Packages. Search for the manufacturer + model. Also verify the WQL query in the TS step matches the model string exactly.</div>
+</div>
+</div>
+
+<!-- BRANCH -->
+<div class="split-wrapper">
+<div class="branch-labels">
+<span class="no">NO &mdash; Missing</span>
+<span class="yes">YES &mdash; Exists</span>
+</div>
+<div class="connector-vertical purple" style="height:12px;"></div>
+<div class="split-horizontal">
+
+<!-- LEFT BRANCH: Package Missing -->
+<div class="branch">
+<div class="connector-vertical red" style="height:20px;"></div>
+<div class="node tool" data-id="5">
+<div class="icon">&#11015;&#65039;</div>
+<div class="label">Download from Vendor</div>
+<div class="subtitle">Dell Command, HP CMSL, Lenovo Update Retriever, etc.</div>
+<div class="tooltip"><b>Vendor tools:</b><br>- Dell: Dell Command | Deploy driver CAB<br>- HP: HP Client Management Script Library (CMSL) or HP Image Assistant<br>- Lenovo: Lenovo Update Retriever or System Update<br>- Microsoft Surface: MSI driver packs from MS download center<br>Download the SCCM/WinPE driver pack for the specific model + OS version.</div>
+</div>
+<div class="connector-vertical amber"></div>
+<div class="node process" data-id="6">
+<div class="icon">&#128230;</div>
+<div class="label">Import into ConfigMgr</div>
+<div class="subtitle">Create driver package, import INFs, set category by model</div>
+<div class="tooltip"><b>Steps:</b><br>1. Extract driver CAB to a network share<br>2. Create new Driver Package (named: Manufacturer-Model-OS)<br>3. Import Driver &rarr; point to extracted folder<br>4. Assign category matching model name<br>5. Add to appropriate driver package<br>6. Optionally: use Modern Driver Management or Driver Automation Tool</div>
+</div>
+<div class="connector-vertical green"></div>
+<div class="node tool" data-id="7">
+<div class="icon">&#128225;</div>
+<div class="label">Distribute to DPs</div>
+<div class="subtitle">Distribute driver package content to distribution points</div>
+<div class="tooltip">Right-click the driver package &rarr; Distribute Content &rarr; select target DP group. Monitor distribution status in Monitoring &rarr; Distribution Status &rarr; Content Status. Wait for all DPs to show success before testing.</div>
+</div>
+<div class="connector-vertical amber"></div>
+<div class="data-label">Package ID + DP status</div>
+</div>
+
+<!-- RIGHT BRANCH: Package Exists -->
+<div class="branch">
+<div class="connector-vertical green" style="height:20px;"></div>
+<div class="node decision" data-id="8">
+<div class="icon">&#10067;</div>
+<div class="label">WQL Query Match?</div>
+<div class="subtitle">Does TS condition match this model's WMI string?</div>
+<div class="tooltip"><b>Common issue:</b> The Apply Driver Package step has a WQL query like:<br><code>SELECT * FROM Win32_ComputerSystem WHERE Model LIKE "%Latitude 5550%"</code><br>If the new model returns a slightly different string (e.g., "Latitude 5550 2-in-1"), the query won't match. Verify with: wmic csproduct get name</div>
+</div>
+<div class="connector-vertical purple"></div>
+<div class="branch-labels">
+<span class="no">NO &mdash; Mismatch</span>
+<span class="yes">YES &mdash; Matches</span>
+</div>
+<div class="split-horizontal">
+
+<!-- Sub-Left: Fix WQL -->
+<div class="branch">
+<div class="connector-vertical red" style="height:16px;"></div>
+<div class="node process" data-id="9">
+<div class="icon">&#9999;&#65039;</div>
+<div class="label">Fix WQL / TS Condition</div>
+<div class="subtitle">Update model string or add LIKE wildcard</div>
+<div class="tooltip">Edit the Apply Driver Package step's WQL condition to match the exact model string from WMI. Use LIKE with % wildcards for flexibility. For Modern Driver Management, update the model mapping table.</div>
+</div>
+<div class="connector-vertical green"></div>
+</div>
+
+<!-- Sub-Right: Check Content -->
+<div class="branch">
+<div class="connector-vertical green" style="height:16px;"></div>
+<div class="node decision" data-id="10">
+<div class="icon">&#10067;</div>
+<div class="label">Content on DP?</div>
+<div class="subtitle">Is the package actually distributed and available?</div>
+<div class="tooltip">Check: Monitoring &rarr; Distribution Status &rarr; Content Status. Look for the package ID. Also verify the DP is in the correct boundary group for the site deploying to. Check distmgr.log for distribution errors.</div>
+</div>
+<div class="connector-vertical purple"></div>
+<div class="branch-labels">
+<span class="no">NO</span>
+<span class="yes">YES</span>
+</div>
+<div class="split-horizontal">
+<div class="branch">
+<div class="connector-vertical red" style="height:12px;"></div>
+<div class="node tool" data-id="11">
+<div class="icon">&#128225;</div>
+<div class="label">Redistribute Content</div>
+<div class="subtitle">Force redistribute to target DPs</div>
+<div class="tooltip">Right-click driver package &rarr; Redistribute. If that fails, check DP disk space, BITS status, and distmgr.log on the site server for content library errors.</div>
+</div>
+<div class="connector-vertical amber"></div>
+</div>
+<div class="branch">
+<div class="connector-vertical green" style="height:12px;"></div>
+<div class="node process" data-id="12">
+<div class="icon">&#128270;</div>
+<div class="label">Check Driver Signing</div>
+<div class="subtitle">Unsigned or corrupt drivers block injection</div>
+<div class="tooltip">DISM will reject unsigned drivers. Check setupapi.dev.log for signing errors. Also check if Secure Boot is enabled and requires WHQL-signed drivers. Try: dism /image:C:\ /get-drivers to verify injected drivers.</div>
+</div>
+<div class="connector-vertical green"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- MERGE POINT -->
+<div class="merge-label">all paths converge</div>
+<div class="connector-vertical purple" style="height:16px;"></div>
+
+<!-- STEP: Update TS -->
+<div class="row">
+<div class="node process" data-id="13">
+<div class="icon">&#9881;&#65039;</div>
+<div class="label">Update Task Sequence</div>
+<div class="subtitle">Add/update Apply Driver Package step with correct package + WQL</div>
+<div class="tooltip"><b>TS configuration:</b><br>1. Add new Apply Driver Package step (or edit existing)<br>2. Set WQL condition: SELECT * FROM Win32_ComputerSystem WHERE Model LIKE "%ModelName%"<br>3. Point to the correct driver package<br>4. Enable "Install driver package by running DISM with recurse option" if using flat driver source<br>5. For Modern Driver Mgmt: update web service or XML with new model entry</div>
+</div>
+</div>
+
+<div class="connector-vertical green"></div>
+
+<!-- STEP: Test Deploy -->
+<div class="row">
+<div class="node tool" data-id="14">
+<div class="icon">&#128187;</div>
+<div class="label">Test OSD on Target HW</div>
+<div class="subtitle">PXE/USB boot &rarr; run task sequence &rarr; verify all devices</div>
+<div class="tooltip">Boot the target laptop via PXE or USB media. Run the full TS. After deployment, check Device Manager for any warning/error devices. Also verify: NIC, audio, touchpad, Bluetooth, TPM, fingerprint reader, and docking station drivers.</div>
+</div>
+</div>
+
+<div class="connector-vertical amber"></div>
+
+<!-- DECISION: Success? -->
+<div class="row">
+<div class="node decision" data-id="15">
+<div class="icon">&#10067;</div>
+<div class="label">All Devices Healthy?</div>
+<div class="subtitle">Device Manager clean? NIC, audio, peripherals working?</div>
+<div class="tooltip">Check Device Manager for any yellow/red icons. Test: network connectivity, audio playback, touchpad gestures, USB ports, docking station, external monitors. Also run: pnputil /enum-devices /problem to find hidden issues.</div>
+</div>
+</div>
+
+<div class="split-wrapper">
+<div class="branch-labels">
+<span class="no">NO &mdash; Still Failing</span>
+<span class="yes">YES &mdash; All Clear</span>
+</div>
+<div class="connector-vertical purple" style="height:12px;"></div>
+<div class="split-horizontal">
+
+<!-- LEFT: Still failing -->
+<div class="branch">
+<div class="connector-vertical red" style="height:20px;"></div>
+<div class="node process" data-id="16">
+<div class="icon">&#128295;</div>
+<div class="label">Isolate Missing Drivers</div>
+<div class="subtitle">Export PnP device IDs &rarr; cross-reference vendor catalog</div>
+<div class="tooltip"><b>Investigation steps:</b><br>1. pnputil /enum-devices /problem<br>2. Export Hardware IDs from Device Manager<br>3. Search vendor driver catalog by Hardware ID<br>4. Check Windows Update catalog for inbox driver updates<br>5. Download individual drivers and inject into package<br>6. Consider: BIOS/UEFI update may expose new device IDs</div>
+</div>
+<div class="connector-vertical green"></div>
+<div class="data-label">&uarr; Loop back to Import step</div>
+</div>
+
+<!-- RIGHT: Success -->
+<div class="branch">
+<div class="connector-vertical green" style="height:20px;"></div>
+<div class="node output" data-id="17">
+<div class="icon">&#9989;</div>
+<div class="label">Document & Close</div>
+<div class="subtitle">Update model support matrix, tag package, notify team</div>
+<div class="tooltip"><b>Wrap-up tasks:</b><br>1. Update your driver support matrix / spreadsheet<br>2. Add model to supported hardware list<br>3. Tag the driver package with OS version + date<br>4. Notify the deployment team the model is cleared<br>5. If using Modern Driver Mgmt: update the admin service or XML<br>6. Consider adding to your driver automation pipeline</div>
+</div>
+<div class="connector-vertical red"></div>
+
+<div class="node datastore" data-id="18">
+<div class="icon">&#128194;</div>
+<div class="label">Driver Support Matrix</div>
+<div class="subtitle">Central record of model &rarr; package &rarr; OS mappings</div>
+<div class="tooltip">Maintain a spreadsheet or SharePoint list tracking: Manufacturer, Model, OS Version, Driver Package ID, Date Last Updated, WQL String, and Notes. This is your single source of truth for supported hardware models.</div>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+<div class="legend-item"><div class="legend-dot trigger"></div>Trigger</div>
+<div class="legend-item"><div class="legend-dot process"></div>Processing Step</div>
+<div class="legend-item"><div class="legend-dot tool"></div>Tool / Service</div>
+<div class="legend-item"><div class="legend-dot decision"></div>Decision Point</div>
+<div class="legend-item"><div class="legend-dot output"></div>Output / Result</div>
+<div class="legend-item"><div class="legend-dot datastore"></div>Data Store</div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const nodes = document.querySelectorAll('.node');
+  const diagram = document.getElementById('diagram');
+
+  nodes.forEach(node => {
+    node.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isActive = node.classList.contains('active');
+      nodes.forEach(n => { n.classList.remove('active', 'dimmed'); });
+      if (!isActive) {
+        node.classList.add('active');
+        nodes.forEach(n => { if (n !== node) n.classList.add('dimmed'); });
+        const parent = node.closest('.branch') || node.closest('.row');
+        if (parent) {
+          const siblings = parent.querySelectorAll('.node');
+          siblings.forEach(s => s.classList.remove('dimmed'));
+        }
+      }
+    });
+  });
+
+  diagram.addEventListener('click', (e) => {
+    if (!e.target.closest('.node')) {
+      nodes.forEach(n => { n.classList.remove('active', 'dimmed'); });
+    }
+  });
+});
+</script>
+
+</body>
+</html>
