@@ -323,13 +323,13 @@
   };
 
   COMMANDS.exit = {
-    desc: "leave (returns you to julianwest.com)",
+    desc: "leave (returns you to where you came from)",
     run() {
       printPlain("logout", "term-mute");
-      printPlain("connection closed.", "term-mute");
       setTimeout(() => {
-        location.href = "https://julianwest.com/";
-      }, 500);
+        if (history.length > 1 && document.referrer) location.href = document.referrer;
+        else printPlain("(nowhere to go. press reboot to start over.)", "term-mute");
+      }, 400);
     },
   };
 
