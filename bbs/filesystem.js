@@ -31,20 +31,19 @@ file and pretending it is a unix host. so am i.
 -- PROJECTS -------------------------------------------------------
 
   [ active ]
-    .  ----------         a thing i am building. ask me about it.
-    .  ----------         another thing, smaller, weirder.
+    .  EndPointPilot      a thing i am building. ask me about it.
+    .  AgentCrew          another thing, smaller, weirder.
 
   [ shelved ]
-    .  ----------         was good. ran out of weekend.
-    .  ----------         pivoted into a hobby.
+    .  WF2OneDrive        was good. ran out of weekend.
+    .  HamRadioFinder    pivoted into a hobby.
 
   [ wishlist ]
     .  a small synth made entirely of doorbells
     .  a journaling app that yells at you in latin
-    .  a homebrew BBS that this page secretly is
+    .  a homebrew BBS that this page secretly is (I miss 1995)
 
-(fill in the dashes when you are ready. or do not. the page works
-either way.)
+(computers are overrated.  but I have no other skills)
 `,
 
     "links.txt": `\
