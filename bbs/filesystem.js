@@ -50,12 +50,12 @@ either way.)
     "links.txt": `\
 -- LINKS ----------------------------------------------------------
 
-  github       ............ https://github.com/J-DubApps
-  linkedin    ............. https://www.linkedin.com/in/julianwest/
-  blog        ............. https://blog.julianwest.me
-  bluesky     ............. https://bsky.app/profile/julianwest.me
-  rss          ............ https://blog.julianwest.me/index.xml
-  pgp          ............ /keys/jdub.asc
+  github       .... https://github.com/J-DubApps
+  linkedin    ..... https://www.linkedin.com/in/julianwest/
+  blog        ..... https://blog.julianwest.me
+  bluesky     ..... https://bsky.app/profile/julianwest.me
+  rss          .... https://blog.julianwest.me/index.xml
+  pgp          .... /keys/jdub.asc
 
 (I should probably put more links here but this isn't going to be seen by more than 5 people)
 `,
