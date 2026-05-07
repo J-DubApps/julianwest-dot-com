@@ -447,33 +447,15 @@
     *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   }
 
-  /* ---------- Hidden BBS easter-egg hotspots ---------- */
-  /* v1.0 footer link — looks identical to plain text */
-  #bbs-version { color: inherit; text-decoration: none; cursor: default; }
-  #bbs-version:hover { color: inherit; }
-
-  /* Invisible square near the theme toggle. Sits to its left, slightly overlapping. */
-  #bbs-toggle-hotspot {
-    display: inline-block;
-    width: 14px; height: 14px;
-    margin-right: 6px;
-    vertical-align: middle;
-    /* fully invisible, no hover state, no cursor change */
-    background: transparent;
-    cursor: default;
-  }
-  #bbs-toggle-hotspot:hover { background: transparent; }
-
-  /* Mobile long-press affordance on the JW monogram. No-op on desktop. */
-  @media (hover: hover) and (pointer: fine) {
-    .monogram { -webkit-user-select: none; user-select: none; }
-  }
-  @media (hover: none) and (pointer: coarse) {
-    .monogram {
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-    }
+  /* mobile */
+  @media (max-width: 640px) {
+    .row { grid-template-columns: 44px 1fr 28px; gap: 14px; padding: 20px 6px; }
+    .row .kind { display: none; }
+    .nameplate { grid-template-columns: 1fr; text-align: center; }
+    .nameplate .rule { display: none; }
+    .chrome { padding: 16px; }
+    .tick.tl, .tick.tr { top: 16px; } .tick.tl, .tick.bl { left: 16px; }
+    .tick.tr, .tick.br { right: 16px; } .tick.bl, .tick.br { bottom: 16px; }
   }
 </style>
 </head>
@@ -484,7 +466,6 @@
   <div class="left mono">JW · EST. DALLAS</div>
   <div class="mid mono">JULIANWEST.COM</div>
   <div class="right">
-    <a href="/bbs/" id="bbs-toggle-hotspot" aria-hidden="true" tabindex="-1"></a>
     <button class="toggle" id="themeToggle" aria-label="Toggle theme">
       <span class="dot"></span>
       <span id="themeLabel">Light</span>
@@ -567,10 +548,10 @@
     <span class="arrow"></span>
   </a>
 
-  <a class="row reveal" href="/cdn-cgi/l/email-protection#7b0f131e3b110e17121a150c1e080f55181416">
+  <a class="row reveal" href="/cdn-cgi/l/email-protection#30445855705a455c59515e475543441e535f5d">
     <span class="num mono">07 —</span>
     <span class="label">Email</span>
-    <span class="kind"><span class="__cf_email__" data-cfemail="e6928e83a68c938a8f878891839592c885898b">[email&#160;protected]</span></span>
+    <span class="kind"><span class="__cf_email__" data-cfemail="04706c61446e71686d656a736177702a676b69">[email&#160;protected]</span></span>
     <span class="arrow"></span>
   </a>
 </section>
@@ -578,7 +559,7 @@
 <footer class="foot">
   <div class="left mono">© 2026 Julian West</div>
   <div class="mid mono">Made by a nerd · Dallas, TX</div>
-  <div class="right mono"><a href="/bbs/" id="bbs-version" aria-label="version">v1.0</a></div>
+  <div class="right mono">v1.0</div>
 </footer>
 
 <!-- Tweaks -->
@@ -757,69 +738,6 @@
     const m = document.querySelector('.monogram');
     if (m) m.classList.add('dim');
   }, 1700);
-
-  // ---------- Hidden BBS easter eggs ----------
-  // Five vectors that all land on /bbs/:
-  //   1. Click "v1.0" in footer-right (plain anchor, handled by HTML)
-  //   2. Click invisible hotspot left of the theme toggle (plain anchor)
-  //   3. Type the letters "jdub" anywhere on the page
-  //   4. URL fragment #bbs auto-redirects on load
-  //   5. Long-press (>=600ms) the JW monogram on touch devices only
-  (function() {
-    const BBS_URL = '/bbs/';
-
-    // Vector 4: URL fragment
-    if (location.hash === '#bbs') {
-      location.replace(BBS_URL);
-      return;
-    }
-
-    // Vector 3: type 'jdub' anywhere
-    const SECRET = 'jdub';
-    let buffer = '';
-    let bufferTimer = null;
-    window.addEventListener('keydown', (e) => {
-      // ignore when typing in form fields
-      const t = e.target;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key.length !== 1) return;
-      buffer = (buffer + e.key.toLowerCase()).slice(-SECRET.length);
-      clearTimeout(bufferTimer);
-      bufferTimer = setTimeout(() => { buffer = ''; }, 1500);
-      if (buffer === SECRET) {
-        location.href = BBS_URL;
-      }
-    });
-
-    // Vector 5: long-press on the monogram (touch only)
-    // Detect via pointer events with pointerType==='touch'.
-    const monogram = document.querySelector('.monogram');
-    if (monogram) {
-      let pressTimer = null;
-      let pressed = false;
-      monogram.addEventListener('pointerdown', (e) => {
-        if (e.pointerType !== 'touch') return;
-        pressed = true;
-        pressTimer = setTimeout(() => {
-          if (pressed) location.href = BBS_URL;
-        }, 600);
-      });
-      const cancel = () => {
-        pressed = false;
-        clearTimeout(pressTimer);
-      };
-      monogram.addEventListener('pointerup', cancel);
-      monogram.addEventListener('pointercancel', cancel);
-      monogram.addEventListener('pointerleave', cancel);
-      monogram.addEventListener('pointermove', (e) => {
-        // tiny movement allowed; cancel on drift
-        if (e.pointerType !== 'touch') return;
-        // Cancel if movement exceeds ~10px
-        if (Math.abs(e.movementX) > 10 || Math.abs(e.movementY) > 10) cancel();
-      });
-    }
-  })();
 
   // ---------- Auto-scroll (idle) + Auto-redirect (time-based) ----------
   // Auto-scroll: 10s after load, IF the user hasn't meaningfully interacted yet.

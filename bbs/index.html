@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" data-theme="green">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<meta name="robots" content="noindex, nofollow" />
+<title>jdub-sandboxhost</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- horizontal rolling bar (boot only, hidden post-boot via CSS) -->
+  <div class="crt-bar" aria-hidden="true"></div>
+
+  <!-- ============================================================
+       BOOT STAGE — full CRT show, kinetic typing, dial-up, banner
+       ============================================================ -->
+  <main id="boot-stage" aria-label="boot sequence">
+    <div id="boot-stream"></div>
+    <div id="boot-skip">
+      <span class="blink">▸</span> press any key to continue
+      <span class="boot-mute"> &nbsp; (or click anywhere)</span>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       TERMINAL — restrained phosphor, real CLI nav
+       ============================================================ -->
+  <main id="term" aria-label="terminal">
+    <header class="term-head">
+      <span><span class="head-host">jdub-sandboxhost</span> <span class="boot-mute">·</span> <span class="head-cwd" id="term-cwd-label">~</span></span>
+      <span>guest session · type 'help'</span>
+    </header>
+
+    <section id="term-out" aria-live="polite"></section>
+
+    <div id="term-prompt-line">
+      <span id="term-prompt"></span>
+      <input
+        id="term-input"
+        type="text"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        aria-label="terminal input"
+      />
+      <span id="term-cursor" aria-hidden="true"></span>
+    </div>
+  </main>
+
+  <script src="filesystem.js"></script>
+  <script src="boot.js"></script>
+  <script src="terminal.js"></script>
+</body>
+</html>
