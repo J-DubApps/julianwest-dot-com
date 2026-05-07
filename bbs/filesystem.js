@@ -35,7 +35,7 @@ file and pretending it is a unix host. so am i.
     .  AgentCrew          another thing, smaller, weirder.
 
   [ shelved ]
-    .  WF2OneDrive        was good. ran out of weekend.
+    .  WF2OneDrive       was good. ran out of weekend.
     .  HamRadioFinder    pivoted into a hobby.
 
   [ wishlist ]
