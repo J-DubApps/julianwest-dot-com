@@ -50,23 +50,20 @@ either way.)
     "links.txt": `\
 -- LINKS ----------------------------------------------------------
 
-  github       ............ https://github.com/your-handle
-  mastodon     ............ https://mastodon.social/@your-handle
-  rss          ............ /feed.xml
+  github       ............ https://github.com/J-DubApps
+  linkedin    ............. https://www.linkedin.com/in/julianwest/
+  blog        ............. https://blog.julianwest.me
+  bluesky     ............. https://bsky.app/profile/julianwest.me
+  rss          ............ https://blog.julianwest.me/index.xml
   pgp          ............ /keys/jdub.asc
 
-  the long-form blog ...... https://your-blog.example
-  the short-form posts .... https://your-microblog.example
-  the photo dump .......... https://your-photos.example
-
-(replace these with the real ones. they are stored as plain text
-in this file. that is the whole CMS.)
+(I should probably put more links here but this isn't going to be seen by more than 5 people)
 `,
 
     "contact.txt": `\
 -- CONTACT --------------------------------------------------------
 
-  email        ........  you [at] yourdomain [dot] com
+  email        ........  iam [at] julianwest [dot] com
   signal       ........  ask in person
   pgp          ........  see links.txt
   carrier pigeon  .....  accepted, do not love it
