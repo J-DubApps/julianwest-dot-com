@@ -173,36 +173,14 @@
     }, 700);
   }
 
-  // Skip the boot only when navigating WITHIN the BBS (e.g. back button,
-  // an internal link from /bbs/something else). A fresh load — refresh on
-  // the main domain into the easter-egg, a deep link, an external referrer —
-  // always replays the show.
-  function shouldSkipBoot() {
-    if (new URLSearchParams(location.search).has("skipboot")) return true;
-
-    // Did the previous page in this tab live under /bbs/?
-    try {
-      if (document.referrer) {
-        const ref = new URL(document.referrer);
-        if (ref.origin === location.origin && ref.pathname.startsWith("/bbs/")) {
-          return true;
-        }
-      }
-    } catch (_) {}
-
-    // Back/forward navigation within the BBS (no referrer but history says
-    // we got here via back/forward — treat as in-BBS).
-    const nav = performance.getEntriesByType
-      ? performance.getEntriesByType("navigation")[0]
-      : null;
-    if (nav && nav.type === "back_forward") return true;
-
-    return false;
-  }
-
-  if (shouldSkipBoot()) {
+  // Skip-all: holding shift on first paint or ?skipboot in URL bypasses.
+  if (
+    new URLSearchParams(location.search).has("skipboot") ||
+    sessionStorage.getItem("seen-boot") === "1"
+  ) {
     cleanup();
   } else {
+    sessionStorage.setItem("seen-boot", "1");
     run();
   }
 })();
