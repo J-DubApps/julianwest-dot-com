@@ -299,9 +299,12 @@
   COMMANDS.reboot = {
     desc: "replay the boot sequence",
     run() {
-      sessionStorage.removeItem("seen-boot");
       printPlain("rebooting…", "term-mute");
-      setTimeout(() => location.reload(), 400);
+      setTimeout(() => {
+        // Force a top-level navigation to the BBS root with an explicit
+        // reboot flag so boot.js always replays the show.
+        location.replace(location.pathname.replace(/[^/]+$/, "") + "?reboot=1");
+      }, 400);
     },
   };
 

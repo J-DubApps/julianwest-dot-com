@@ -178,7 +178,9 @@
   // the main domain into the easter-egg, a deep link, an external referrer —
   // always replays the show.
   function shouldSkipBoot() {
-    if (new URLSearchParams(location.search).has("skipboot")) return true;
+    const params = new URLSearchParams(location.search);
+    if (params.has("reboot")) return false; // explicit replay always wins
+    if (params.has("skipboot")) return true;
 
     // Did the previous page in this tab live under /bbs/?
     try {
