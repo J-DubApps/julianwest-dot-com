@@ -282,43 +282,9 @@ pre.term-line {
   text-shadow: 0 0 6px rgba(108, 243, 138, 0.6);
 }
 
-/* matrix rain overlay */
-#matrix-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  background: #050807;
-  opacity: 1;
-  transition: opacity 0.5s ease;
-}
-#matrix-overlay.matrix-fading { opacity: 0; }
-#matrix-canvas {
-  position: absolute;
-  inset: 0;
-  display: block;
-}
-#matrix-hint {
-  position: absolute;
-  bottom: 4vh;
-  left: 0;
-  right: 0;
-  text-align: center;
-  color: var(--fg-mute);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  pointer-events: none;
-  animation: blink 1.4s steps(2, end) infinite;
-}
-
 .term-fetch {
   color: var(--fg);
-  line-height: 1.15;
 }
-.term-fetch .fetch-art { color: var(--fg-mute); }
-.term-fetch .fetch-label { color: var(--fg-bright); font-weight: 600; }
-.term-fetch .fetch-swatch { color: var(--fg-bright); letter-spacing: 0.05em; }
 
 /* ---------- Active prompt line ---------- */
 

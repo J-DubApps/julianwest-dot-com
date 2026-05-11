@@ -501,19 +501,90 @@
     desc: "system splash",
     hidden: true,
     run() {
-      const art = `
-       _________
-      |  _____  |     ${USER}@${HOST}
-      | |     | |     ─────────────────
-      | |  >_ | |     OS:    jdub-os (green phosphor)
-      | |_____| |     KERN:  4.20.69-friendly
-      |_________|     UPTIME: just now
-       \\_______/      SHELL: /bin/sh
-        |  |  |       TERM:  vt220-friendly
-       _|__|__|_      THEME: green-on-black
-                     PHILOSOPHY: less is more
-`;
-      printBlock(art, "term-block term-fetch");
+      // Pad ASCII art rows so the info column lines up.
+      const art = [
+        "                   -`                  ",
+        "                  .o+`                 ",
+        "                 `ooo/                 ",
+        "                `+oooo:                ",
+        "               `+oooooo:               ",
+        "               -+oooooo+:              ",
+        "             `/:-:++oooo+:             ",
+        "            `/++++/+++++++:            ",
+        "           `/++++++++++++++:           ",
+        "          `/+++ooooooooooooo/`         ",
+        "         ./ooosssso++osssssso+`        ",
+        "        .oossssso-````/ossssss+`       ",
+        "       -osssssso.      :ssssssso.      ",
+        "      :osssssss/        osssso+++.     ",
+        "     /ossssssss/        +ssssooo/-     ",
+        "   `/ossssso+/:-        -:/+osssso+-   ",
+        "  `+sso+:-`                 `.-/+oso:  ",
+        " `++:.                           `-/+/ ",
+        " .`                                 `/ ",
+      ];
+
+      // Build memory + uptime numbers that look plausible without being silly.
+      const memUsed = 1024 + Math.floor(Math.random() * 1800);
+      const memTotal = 8192;
+      const bootMs = performance.now() | 0;
+      const uptime =
+        bootMs < 60000
+          ? `${Math.max(1, (bootMs / 1000) | 0)} seconds`
+          : `${(bootMs / 60000) | 0} mins, ${((bootMs % 60000) / 1000) | 0} secs`;
+
+      const info = [
+        `${USER}@${HOST}`,
+        `-----------------`,
+        `OS: jdub-os 0.4 x86_64`,
+        `Host: jdub-sandboxhost (friends-only edition)`,
+        `Kernel: 4.20.69-friendly`,
+        `Uptime: ${uptime}`,
+        `Packages: 7 (vfs), 0 (apt)`,
+        `Shell: /bin/jdubsh 1.0`,
+        `Resolution: ${window.innerWidth}x${window.innerHeight}`,
+        `WM: phosphor-wm`,
+        `Theme: ${document.documentElement.dataset.theme || "green"}-on-black`,
+        `Terminal: jdub-term v0.4`,
+        `Terminal Font: JetBrains Mono`,
+        `CPU: human cortex (1) @ ~40Hz`,
+        `GPU: imagination`,
+        `Memory: ${memUsed}MiB / ${memTotal}MiB`,
+      ];
+
+      // Compose two columns. Art is ~40 chars wide.
+      const COL_W = 42;
+      const rows = Math.max(art.length, info.length);
+      const out = [];
+      for (let i = 0; i < rows; i++) {
+        const left = (art[i] || "").padEnd(COL_W, " ");
+        const right = info[i] || "";
+        out.push(left + right);
+      }
+      out.push(""); // blank
+      // color swatch row
+      out.push(
+        "    ".padEnd(COL_W, " ") +
+          "███ ███ ███ ███ ███ ███ ███ ███"
+      );
+
+      const el = document.createElement("pre");
+      el.className = "term-line term-block term-fetch";
+      // We want art dimmed, info bright — easiest with two spans per line.
+      el.innerHTML = out
+        .map((line, i) => {
+          if (i >= rows) return `<span class="fetch-swatch">${escapeHTML(line)}</span>`;
+          const left = escapeHTML(line.slice(0, COL_W));
+          const right = escapeHTML(line.slice(COL_W));
+          // highlight "label:" portion of right side
+          const rightHTML = right.replace(
+            /^([A-Za-z@\-][^:]*:)/,
+            '<span class="fetch-label">$1</span>'
+          );
+          return `<span class="fetch-art">${left}</span>${rightHTML}`;
+        })
+        .join("\n");
+      document.getElementById("term-out").appendChild(el);
     },
   };
 
