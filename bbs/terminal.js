@@ -370,19 +370,119 @@
   COMMANDS.matrix = {
     desc: "fall down the rabbit hole",
     hidden: true,
-    run() {
-      const lines = 18;
-      const cols = 60;
-      const chars = "01·∙•◦アカサタナハマヤラワ";
-      let s = "";
-      for (let r = 0; r < lines; r++) {
-        let row = "";
-        for (let c = 0; c < cols; c++) {
-          row += Math.random() < 0.4 ? chars[Math.floor(Math.random() * chars.length)] : " ";
-        }
-        s += row + "\n";
+    run(args) {
+      // Already running? bail.
+      if (document.getElementById("matrix-overlay")) return;
+
+      const duration = Math.max(2000, Math.min(60000, (+args[0] || 10) * 1000));
+
+      const overlay = document.createElement("div");
+      overlay.id = "matrix-overlay";
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.innerHTML =
+        '<canvas id="matrix-canvas"></canvas>' +
+        '<div id="matrix-hint">▸ press any key to exit</div>';
+      document.body.appendChild(overlay);
+
+      const canvas = overlay.querySelector("#matrix-canvas");
+      const ctx = canvas.getContext("2d");
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const charset =
+        "0123456789ABCDEF·∙•◦アカサタナハマヤラワヰヱヲンｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿ".split("");
+      const fontSize = 16;
+      let cols, drops;
+
+      function resize() {
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        canvas.style.width = window.innerWidth + "px";
+        canvas.style.height = window.innerHeight + "px";
+        ctx.scale(dpr, dpr);
+        cols = Math.ceil(window.innerWidth / fontSize);
+        drops = new Array(cols).fill(0).map(() =>
+          Math.random() * -50
+        );
       }
-      printBlock(s, "term-block term-matrix");
+      resize();
+      window.addEventListener("resize", resize);
+
+      // Read theme color from CSS variable so amber works too.
+      const cs = getComputedStyle(document.documentElement);
+      const fg = (cs.getPropertyValue("--fg") || "#6cf38a").trim();
+      const fgBright = (cs.getPropertyValue("--fg-bright") || "#b6ffce").trim();
+
+      let raf = 0;
+      let stopped = false;
+
+      function frame() {
+        if (stopped) return;
+        // dark trail
+        ctx.fillStyle = "rgba(5, 8, 7, 0.08)";
+        ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+        ctx.font = fontSize + "px 'JetBrains Mono', ui-monospace, monospace";
+        ctx.textBaseline = "top";
+
+        for (let i = 0; i < cols; i++) {
+          const ch = charset[(Math.random() * charset.length) | 0];
+          const x = i * fontSize;
+          const y = drops[i] * fontSize;
+
+          // head — bright
+          ctx.fillStyle = fgBright;
+          ctx.shadowColor = fg;
+          ctx.shadowBlur = 8;
+          ctx.fillText(ch, x, y);
+          ctx.shadowBlur = 0;
+
+          // trail — main color
+          if (drops[i] > 1) {
+            ctx.fillStyle = fg;
+            ctx.fillText(
+              charset[(Math.random() * charset.length) | 0],
+              x,
+              y - fontSize
+            );
+          }
+
+          drops[i]++;
+          if (y > window.innerHeight && Math.random() > 0.975) {
+            drops[i] = Math.random() * -20;
+          }
+        }
+        raf = requestAnimationFrame(frame);
+      }
+      frame();
+
+      function stop() {
+        if (stopped) return;
+        stopped = true;
+        cancelAnimationFrame(raf);
+        window.removeEventListener("resize", resize);
+        window.removeEventListener("keydown", onKey, true);
+        window.removeEventListener("pointerdown", onPointer, true);
+        clearTimeout(autoTimer);
+        overlay.classList.add("matrix-fading");
+        setTimeout(() => overlay.remove(), 500);
+        // refocus input after dismiss
+        setTimeout(() => input && input.focus(), 600);
+      }
+
+      function onKey(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        stop();
+      }
+      function onPointer(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        stop();
+      }
+      window.addEventListener("keydown", onKey, true);
+      window.addEventListener("pointerdown", onPointer, true);
+      const autoTimer = setTimeout(stop, duration);
+
+      printPlain("wake up, neo… (any key to exit)", "term-mute");
     },
   };
 

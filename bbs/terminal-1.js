@@ -299,9 +299,12 @@
   COMMANDS.reboot = {
     desc: "replay the boot sequence",
     run() {
-      sessionStorage.removeItem("seen-boot");
       printPlain("rebooting…", "term-mute");
-      setTimeout(() => location.reload(), 400);
+      setTimeout(() => {
+        // Force a top-level navigation to the BBS root with an explicit
+        // reboot flag so boot.js always replays the show.
+        location.replace(location.pathname.replace(/[^/]+$/, "") + "?reboot=1");
+      }, 400);
     },
   };
 
@@ -323,13 +326,13 @@
   };
 
   COMMANDS.exit = {
-    desc: "leave (returns you to where you came from)",
+    desc: "leave (returns you to julianwest.com)",
     run() {
       printPlain("logout", "term-mute");
+      printPlain("connection closed.", "term-mute");
       setTimeout(() => {
-        if (history.length > 1 && document.referrer) location.href = document.referrer;
-        else printPlain("(nowhere to go. press reboot to start over.)", "term-mute");
-      }, 400);
+        location.href = "https://julianwest.com/";
+      }, 500);
     },
   };
 
