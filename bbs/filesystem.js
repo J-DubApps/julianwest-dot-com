@@ -13,7 +13,7 @@ window.VFS = {
   who:       jdub
   what:      tinkerer, generalist, occasional shipper of things
   where:     somewhere with decent coffee and bad weather
-  why:       because i can
+  why:       there is no why...
 
 this is a small corner of the internet for friends. it does not
 exist on the public map. you found it because someone told you
