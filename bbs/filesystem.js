@@ -18,16 +18,16 @@ window.VFS = {
 this is a small corner of the internet for friends. it does not
 exist on the public map. you found it because someone told you
 where to look, or you went looking. which is its own kind of
-credential.  i borrowed/stole the idea from a best friend @ vitanza.net.
-check out his site if you wanna see a cooler version.
+credential.  i stole the idea from my close friend @ vitanza.net.
+check out his site if you wanna see the OG cool version.
 
-why is this a terminal?  because I spend most of my day in one, and 
+why a terminal?  because I spend most of my day in one, and 
 I might as well feel at home. 
 there is no seo/analytics crap here. 
 no tracking. 
 no newsletter. 
 there is barely a server. 
-it's pretend.  it's play. an artifact of my early Gen-X online days.
+it's just pure text. it's play. it's an artifact early Gen-X online ux.
 thanks for visiting. 
 
   -- jdub
