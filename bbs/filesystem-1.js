@@ -13,68 +13,62 @@ window.VFS = {
   who:       jdub
   what:      tinkerer, generalist, occasional shipper of things
   where:     somewhere with decent coffee and bad weather
-  why:       because i can
+  why:       there is no why...
 
 this is a small corner of the internet for friends. it does not
 exist on the public map. you found it because someone told you
-where to look, or you went looking, which is its own kind of
-credential.
+where to look, or you went looking. which is its own kind of
+credential.  i borrowed/stole the idea from a best friend @ vitanza.net.
+check out his site if you wanna see a cooler version.
 
-there is no analytics here. there is no tracking. there is no
-newsletter. there is barely a server. you are reading a static
-file and pretending it is a unix host. so am i.
+why is this a terminal?  because I spend most of my day in one, and 
+I might as well feel at home. 
+there is no seo/analytics crap here. 
+no tracking. 
+no newsletter. 
+there is barely a server. 
+it's pretend.  it's play. an artifact of my Gen-X early online days.
+thanks for visiting. 
 
   -- jdub
 `,
 
-    projects: {
-      __dir: true,
-      children: {
-        "README.txt": `\
+    "projects.txt": `\
 -- PROJECTS -------------------------------------------------------
 
   [ active ]
-    .  ----------         a thing i am building. ask me about it.
-    .  ----------         another thing, smaller, weirder.
+    .  EndPointPilot      a thing i am building. ask me about it.
+    .  AgentCrew          another thing, smaller, weirder.
 
   [ shelved ]
-    .  ----------         was good. ran out of weekend.
-    .  ----------         pivoted into a hobby.
+    .  WF2OneDrive       was good. ran out of weekend.
+    .  HamRadioFinder    pivoted into a hobby.
 
   [ wishlist ]
     .  a small synth made entirely of doorbells
     .  a journaling app that yells at you in latin
-    .  a homebrew BBS that this page secretly is
+    .  a homebrew BBS that this page secretly is (I miss 1995)
 
-(fill in the dashes when you are ready. or do not. the page works
-either way.)
-
-  tip:  'ls' here to see project files. 'cd ..' to go back.
+(computers are overrated.  but I have no other skills)
 `,
-      },
-    },
-
 
     "links.txt": `\
 -- LINKS ----------------------------------------------------------
 
-  github       ............ https://github.com/your-handle
-  mastodon     ............ https://mastodon.social/@your-handle
-  rss          ............ /feed.xml
-  pgp          ............ /keys/jdub.asc
+  github       .... https://github.com/J-DubApps
+  linkedin    ..... https://www.linkedin.com/in/julianwest/
+  blog        ..... https://blog.julianwest.me
+  bluesky     ..... https://bsky.app/profile/julianwest.me
+  rss          .... https://blog.julianwest.me/index.xml
+  pgp          .... /keys/jdub.asc
 
-  the long-form blog ...... https://your-blog.example
-  the short-form posts .... https://your-microblog.example
-  the photo dump .......... https://your-photos.example
-
-(replace these with the real ones. they are stored as plain text
-in this file. that is the whole CMS.)
+(I should probably put more links here but this isn't going to be seen by more than 5 people)
 `,
 
     "contact.txt": `\
 -- CONTACT --------------------------------------------------------
 
-  email        ........  you [at] yourdomain [dot] com
+  email        ........  iam [at] julianwest [dot] com
   signal       ........  ask in person
   pgp          ........  see links.txt
   carrier pigeon  .....  accepted, do not love it
@@ -91,9 +85,7 @@ you found this page. that is the password.
 
   1.  type 'help' to see what works.
   2.  'ls' shows files. 'cat <file>' opens them.
-  3.  some entries are directories — try 'cd projects' then 'ls'.
-       use 'cd ..' to go back up.
-  4.  'grep <pattern> <file>' searches inside a file.
+  3.  'grep <pattern> <file>' searches inside a file.
   4.  up/down arrow walks command history.
   5.  tab completes file names.
   6.  'clear' wipes the screen. 'reboot' replays the boot show.
