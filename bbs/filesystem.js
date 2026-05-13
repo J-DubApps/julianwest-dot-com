@@ -81,11 +81,9 @@ thanks for visiting.
   pgp          ........  see links.txt
   carrier pigeon  .....  accepted, do not love it
 
-if you are reading this, you probably already have a way to reach
-me. use that.
+if you are reading this, you probably already have a way to reach me. use that.
 
-if you do not, and you want to: send a friendly note. tell me how
-you found this page. that is the password.
+if you do not, and you want to: send a friendly note. tell me how you found this page. that is the password.
 `,
 
     "tips.txt": `\
